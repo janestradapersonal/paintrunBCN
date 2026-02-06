@@ -21,13 +21,25 @@ import {
   Activity as ActivityIcon,
   Calendar,
   Loader2,
+  Palette,
+  Check,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { queryClient } from "@/lib/queryClient";
+
+const PRESET_COLORS = [
+  "#FF6B35", "#E53E3E", "#DD6B20", "#D69E2E",
+  "#38A169", "#319795", "#3182CE", "#5A67D8",
+  "#805AD5", "#D53F8C", "#ED64A6", "#00E5FF",
+  "#76FF03", "#FFD600", "#FF3D00", "#FFFFFF",
+];
 
 type UserProfile = {
   id: string;
   username: string;
   totalAreaSqMeters: number;
+  paintColor: string;
   createdAt: string;
   activityCount: number;
   followerCount: number;
@@ -68,10 +80,13 @@ export default function ProfilePage() {
   const [, params] = useRoute("/profile/:userId");
   const userId = params?.userId || "";
   const { user } = useAuth();
-  const queryClient = useQueryClient();
+  const qc = useQueryClient();
+  const { toast } = useToast();
   const [followPending, setFollowPending] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [savingColor, setSavingColor] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -122,10 +137,24 @@ export default function ProfilePage() {
       } else {
         await apiRequest("POST", `/api/users/${userId}/follow`);
       }
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "followers"] });
+      qc.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+      qc.invalidateQueries({ queryKey: ["/api/users", userId, "followers"] });
     } finally {
       setFollowPending(false);
+    }
+  };
+
+  const handleColorChange = async (color: string) => {
+    setSavingColor(true);
+    try {
+      await apiRequest("PUT", "/api/users/me/paint-color", { color });
+      qc.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+      qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Color actualizado", description: "Tu nuevo color de pintura se ha guardado." });
+    } catch {
+      toast({ title: "Error", description: "No se pudo guardar el color", variant: "destructive" });
+    } finally {
+      setSavingColor(false);
     }
   };
 
@@ -213,6 +242,65 @@ export default function ProfilePage() {
                 Miembro desde {formatDate(profile.createdAt)}
               </p>
             </div>
+            {isOwnProfile && (
+              <div className="w-full">
+                <button
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className="flex items-center gap-2 mx-auto text-xs text-muted-foreground hover-elevate rounded-md px-3 py-1.5"
+                  data-testid="button-color-picker-toggle"
+                >
+                  <div
+                    className="w-4 h-4 rounded-full border border-border"
+                    style={{ backgroundColor: profile.paintColor }}
+                  />
+                  <Palette className="w-3.5 h-3.5" />
+                  Cambiar color de pintura
+                </button>
+                {showColorPicker && (
+                  <Card className="mt-2">
+                    <CardContent className="p-3">
+                      <div className="grid grid-cols-8 gap-1.5" data-testid="color-picker-grid">
+                        {PRESET_COLORS.map((c) => (
+                          <button
+                            key={c}
+                            onClick={() => handleColorChange(c)}
+                            disabled={savingColor}
+                            className={`w-7 h-7 rounded-md border-2 transition-transform flex items-center justify-center ${
+                              profile.paintColor === c ? "border-foreground scale-110" : "border-transparent hover:scale-105"
+                            }`}
+                            style={{ backgroundColor: c }}
+                            data-testid={`button-color-${c.replace("#", "")}`}
+                          >
+                            {profile.paintColor === c && (
+                              <Check className={`w-3.5 h-3.5 ${c === "#FFFFFF" || c === "#FFD600" || c === "#76FF03" ? "text-black" : "text-white"}`} />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <label className="text-[10px] text-muted-foreground">Personalizado:</label>
+                        <input
+                          type="color"
+                          value={profile.paintColor}
+                          onChange={(e) => handleColorChange(e.target.value)}
+                          className="w-7 h-7 rounded-md border border-border cursor-pointer bg-transparent"
+                          data-testid="input-custom-color"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+            {!isOwnProfile && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <div
+                  className="w-3 h-3 rounded-full border border-border"
+                  style={{ backgroundColor: profile.paintColor }}
+                />
+                Color de pintura
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
@@ -403,7 +491,7 @@ export default function ProfilePage() {
             activities={userActivities}
             className="w-full h-full min-h-[400px] lg:min-h-0"
             interactive={true}
-            userColor="#FF6B35"
+            userColor={profile.paintColor}
             intensityMode={true}
           />
         </main>

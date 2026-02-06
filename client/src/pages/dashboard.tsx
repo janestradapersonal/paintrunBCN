@@ -250,7 +250,7 @@ export default function DashboardPage() {
             activities={activities}
             className="w-full h-full min-h-[400px] lg:min-h-0"
             interactive={true}
-            userColor="#FF6B35"
+            userColor={user.paintColor}
             intensityMode={true}
           />
         </main>

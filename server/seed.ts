@@ -138,15 +138,19 @@ export async function seedDatabase() {
 
     const user1 = await storage.createUser("runner1@paintrunbcn.com", "MaratonistaBCN", password);
     await storage.verifyUser("runner1@paintrunbcn.com");
+    await storage.updatePaintColor(user1.id, "#FF6B35");
 
     const user2 = await storage.createUser("runner2@paintrunbcn.com", "CorredorUrba", password);
     await storage.verifyUser("runner2@paintrunbcn.com");
+    await storage.updatePaintColor(user2.id, "#3182CE");
 
     const user3 = await storage.createUser("runner3@paintrunbcn.com", "TrailRunnerBCN", password);
     await storage.verifyUser("runner3@paintrunbcn.com");
+    await storage.updatePaintColor(user3.id, "#38A169");
 
     const user4 = await storage.createUser("runner4@paintrunbcn.com", "PaintMaster", password);
     await storage.verifyUser("runner4@paintrunbcn.com");
+    await storage.updatePaintColor(user4.id, "#D53F8C");
 
     for (const a of [SAMPLE_ACTIVITIES[0], SAMPLE_ACTIVITIES[1], SAMPLE_ACTIVITIES[3]]) {
       const neighborhood = detectNeighborhood(a.coordinates);
