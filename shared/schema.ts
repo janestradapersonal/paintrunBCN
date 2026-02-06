@@ -29,7 +29,19 @@ export const activities = pgTable("activities", {
   polygon: jsonb("polygon").$type<number[][]>(),
   areaSqMeters: real("area_sq_meters").notNull().default(0),
   distanceMeters: real("distance_meters").notNull().default(0),
+  neighborhoodName: text("neighborhood_name"),
+  monthKey: text("month_key"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+});
+
+export const monthlyTitles = pgTable("monthly_titles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  monthKey: text("month_key").notNull(),
+  titleType: text("title_type").notNull(),
+  neighborhoodName: text("neighborhood_name"),
+  rank: integer("rank").notNull().default(1),
+  areaSqMeters: real("area_sq_meters").notNull().default(0),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -58,3 +70,4 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type VerificationCode = typeof verificationCodes.$inferSelect;
+export type MonthlyTitle = typeof monthlyTitles.$inferSelect;
