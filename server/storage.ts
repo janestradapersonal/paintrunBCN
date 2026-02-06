@@ -16,6 +16,7 @@ export interface IStorage {
   createUser(email: string, username: string, passwordHash: string): Promise<User>;
   verifyUser(email: string): Promise<void>;
   updateUserArea(userId: string): Promise<void>;
+  updatePaintColor(userId: string, color: string): Promise<void>;
 
   createVerificationCode(email: string, code: string, expiresAt: Date): Promise<VerificationCode>;
   getVerificationCode(email: string, code: string): Promise<VerificationCode | undefined>;
@@ -81,6 +82,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(activities.userId, userId));
     const total = result[0]?.total || 0;
     await db.update(users).set({ totalAreaSqMeters: total }).where(eq(users.id, userId));
+  }
+
+  async updatePaintColor(userId: string, color: string): Promise<void> {
+    await db.update(users).set({ paintColor: color }).where(eq(users.id, userId));
   }
 
   async createVerificationCode(email: string, code: string, expiresAt: Date): Promise<VerificationCode> {
@@ -291,6 +296,7 @@ export class DatabaseStorage implements IStorage {
       id: user.id,
       username: user.username,
       totalAreaSqMeters: user.totalAreaSqMeters,
+      paintColor: user.paintColor,
       createdAt: user.createdAt,
       activityCount: Number(activityResult?.count || 0),
       followerCount: Number(followerResult?.count || 0),

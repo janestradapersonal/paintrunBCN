@@ -164,6 +164,7 @@ export async function registerRoutes(
       username: user.username,
       totalAreaSqMeters: user.totalAreaSqMeters,
       verified: user.verified,
+      paintColor: user.paintColor,
     });
   });
 
@@ -232,6 +233,15 @@ export async function registerRoutes(
       rank,
       titles,
     });
+  });
+
+  app.put("/api/users/me/paint-color", requireAuth, async (req: Request, res: Response) => {
+    const { color } = req.body;
+    if (!color || typeof color !== "string" || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      return res.status(400).json({ message: "Color no válido. Usa formato hex (#FF6B35)" });
+    }
+    await storage.updatePaintColor(req.session.userId!, color);
+    return res.json({ paintColor: color });
   });
 
   app.get("/api/rankings", async (req: Request, res: Response) => {
