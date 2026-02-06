@@ -33,11 +33,11 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - View any ranked user's painted areas on the map
 
 ## Pages
-- `/` - Landing page
+- `/` - Landing page (welcome panel when logged out, dashboard when logged in)
 - `/register` - Registration form
 - `/verify` - Email verification (OTP input)
 - `/login` - Login form
-- `/dashboard` - Authenticated user dashboard with map + activities + titles
+- `/dashboard` - Redirects to `/` (dashboard is now part of landing page)
 - `/rankings` - Rankings with Global/Neighborhoods tabs and month selector
 - `/profile/:userId` - Public user profile with trophy cabinet, map, followers/following
 

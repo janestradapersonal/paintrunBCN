@@ -23,7 +23,7 @@ export default function VerifyPage() {
     try {
       await verify(email, code);
       toast({ title: "Email verificado", description: "Tu cuenta ha sido activada." });
-      navigate("/dashboard");
+      navigate("/");
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {

@@ -29,7 +29,7 @@ export default function LoginPage() {
     setIsPending(true);
     try {
       await login(values.email, values.password);
-      navigate("/dashboard");
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
