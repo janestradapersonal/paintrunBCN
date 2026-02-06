@@ -129,8 +129,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row">
-        <aside className="lg:w-80 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        <aside className="lg:w-80 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto max-h-[50vh] lg:max-h-none">
           <div className="grid grid-cols-2 gap-3">
             <Card>
               <CardContent className="p-4 flex flex-col items-center text-center">
@@ -245,10 +245,10 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        <main className="flex-1 relative">
+        <main className="flex-1 relative min-h-[50vh] lg:min-h-0">
           <BarcelonaMap
             activities={activities}
-            className="w-full h-full min-h-[400px] lg:min-h-0"
+            className="w-full h-full"
             interactive={true}
             userColor={user.paintColor}
             intensityMode={true}

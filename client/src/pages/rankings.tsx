@@ -260,8 +260,8 @@ export default function RankingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)]">
-        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 overflow-y-auto">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-120px)] overflow-hidden">
+        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 overflow-y-auto max-h-[50vh] lg:max-h-none">
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -298,10 +298,10 @@ export default function RankingsPage() {
           )}
         </aside>
 
-        <main className="flex-1 relative">
+        <main className="flex-1 relative min-h-[50vh] lg:min-h-0">
           {tab === "global-live" ? (
             <BarcelonaMap
-              className="w-full h-full min-h-[400px] lg:min-h-0"
+              className="w-full h-full"
               interactive={true}
               territories={liveTerritoriesData}
               highlightUserId={selectedUserId}
@@ -309,7 +309,7 @@ export default function RankingsPage() {
           ) : activeUserId ? (
             <BarcelonaMap
               activities={selectedActivities}
-              className="w-full h-full min-h-[400px] lg:min-h-0"
+              className="w-full h-full"
               interactive={true}
               intensityMode={true}
               highlightNeighborhood={selectedNeighborhood}
@@ -322,7 +322,7 @@ export default function RankingsPage() {
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
               <BarcelonaMap
-                className="w-full h-full min-h-[400px] lg:min-h-0"
+                className="w-full h-full"
                 interactive={true}
                 highlightNeighborhood={selectedNeighborhood}
               />
