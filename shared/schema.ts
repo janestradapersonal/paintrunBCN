@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   verified: boolean("verified").notNull().default(false),
   totalAreaSqMeters: real("total_area_sq_meters").notNull().default(0),
+  paintColor: text("paint_color").notNull().default("#FF6B35"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
