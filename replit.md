@@ -46,7 +46,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `session` - auto-managed by connect-pg-simple
 
 ## Dev Notes
-- Verification codes are logged to console and returned in response (dev mode)
+- Verification codes are logged to console and shown in a toast notification (dev mode only). No email delivery service is configured - to add email delivery, set up Resend or SendGrid integration and update server/routes.ts to send the code via email instead of returning it.
 - Seed data creates 4 sample users with activities
 - Demo login: runner1@paintrunbcn.com / demo123
 - Theme defaults to dark mode (fits the CARTO dark map tiles)
