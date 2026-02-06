@@ -62,17 +62,17 @@ export default function LandingPage() {
 function WelcomeView() {
   return (
     <div className="fixed inset-0 bg-background">
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <BarcelonaMap
           className="w-full h-full"
           interactive={false}
           showNeighborhoods={true}
         />
       </div>
-      <div className="absolute inset-0 bg-background/60 pointer-events-none" />
+      <div className="absolute inset-0 z-10 bg-background/60 pointer-events-none" />
 
-      <div className="relative z-10 flex items-center justify-center w-full h-full px-4">
-        <div className="flex flex-col items-center text-center max-w-md w-full bg-card/90 backdrop-blur-md border border-card-border rounded-md p-8 md:p-10">
+      <div className="absolute inset-0 z-20 flex items-center justify-center px-4 pointer-events-none">
+        <div className="flex flex-col items-center text-center max-w-md w-full bg-card/90 backdrop-blur-md border border-card-border rounded-md p-8 md:p-10 pointer-events-auto">
           <span className="text-3xl md:text-5xl font-black tracking-tight mb-3" data-testid="text-splash-logo">
             <span className="text-primary">paint</span>
             <span className="text-foreground">run</span>
