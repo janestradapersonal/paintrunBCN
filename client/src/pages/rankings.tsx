@@ -5,10 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map, ChevronLeft, ChevronRight, Award } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map, ChevronLeft, ChevronRight, Award, Users } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
+import UserSearch from "@/components/user-search";
 import { useState, useMemo } from "react";
 
 type RankedUser = {
@@ -139,6 +140,15 @@ export default function RankingsPage() {
     enabled: !!activeUserId,
   });
 
+  const { data: participantCount } = useQuery<{ count: number }>({
+    queryKey: ["/api/rankings/participant-count", "month", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/rankings/participant-count?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error");
+      return res.json();
+    },
+  });
+
   const isLoading = tab === "global" ? globalLoading : neighborhoodLoading;
 
   const globalPodium = useMemo(() => {
@@ -165,16 +175,17 @@ export default function RankingsPage() {
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             </Link>
-            <span className="text-xl font-bold tracking-tight">
+            <span className="text-xl font-bold tracking-tight hidden sm:inline">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
           </div>
+          <UserSearch className="w-48 lg:w-64" />
           <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant={tab === "global" ? "default" : "ghost"}
             size="sm"
@@ -193,6 +204,12 @@ export default function RankingsPage() {
           >
             <Map className="w-4 h-4" /> Por Barrios
           </Button>
+          {participantCount && (
+            <Badge variant="secondary" className="gap-1 ml-auto" data-testid="badge-participant-count">
+              <Users className="w-3 h-3" />
+              {participantCount.count} participante{participantCount.count !== 1 ? "s" : ""}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -326,7 +343,9 @@ function GlobalRankingList({
               >
                 {i === 0 ? <Crown className="w-5 h-5" /> : <Medal className="w-5 h-5" />}
               </div>
-              <span className="text-xs font-bold truncate w-full text-center">{u.username}</span>
+              <Link href={`/profile/${u.id}`}>
+                <span className="text-xs font-bold truncate w-full text-center hover:underline">{u.username}</span>
+              </Link>
               <span className="text-[10px] text-muted-foreground mt-0.5">{formatArea(u.totalAreaSqMeters)}</span>
               <Badge
                 variant="secondary"
@@ -368,7 +387,9 @@ function GlobalRankingList({
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{u.username}</p>
+              <Link href={`/profile/${u.id}`}>
+                <p className="font-medium text-sm truncate hover:underline">{u.username}</p>
+              </Link>
             </div>
             <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
               <MapPin className="w-3 h-3" />
@@ -487,7 +508,9 @@ function NeighborhoodLeaderboardView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{u.username}</p>
+                  <Link href={`/profile/${uid}`}>
+                    <p className="font-medium text-sm truncate hover:underline">{u.username}</p>
+                  </Link>
                 </div>
                 <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
                   <MapPin className="w-3 h-3" />

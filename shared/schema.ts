@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, real, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, real, jsonb, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -44,6 +44,15 @@ export const monthlyTitles = pgTable("monthly_titles", {
   areaSqMeters: real("area_sq_meters").notNull().default(0),
 });
 
+export const follows = pgTable("follows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  followerId: varchar("follower_id").notNull().references(() => users.id),
+  followingId: varchar("following_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique().on(table.followerId, table.followingId),
+]);
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   username: true,
@@ -71,3 +80,4 @@ export type User = typeof users.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
 export type VerificationCode = typeof verificationCodes.$inferSelect;
 export type MonthlyTitle = typeof monthlyTitles.$inferSelect;
+export type Follow = typeof follows.$inferSelect;

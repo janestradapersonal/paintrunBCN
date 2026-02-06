@@ -1,7 +1,7 @@
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { users, activities, verificationCodes, monthlyTitles, type User, type Activity, type VerificationCode, type MonthlyTitle } from "@shared/schema";
+import { users, activities, verificationCodes, monthlyTitles, follows, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow } from "@shared/schema";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -35,6 +35,18 @@ export interface IStorage {
   createMonthlyTitle(userId: string, monthKey: string, titleType: string, neighborhoodName: string | null, rank: number, areaSqMeters: number): Promise<MonthlyTitle>;
   getUserTitles(userId: string): Promise<MonthlyTitle[]>;
   getTitlesForMonth(monthKey: string): Promise<MonthlyTitle[]>;
+
+  searchUsers(query: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]>;
+  getUserProfile(userId: string): Promise<{ id: string; username: string; totalAreaSqMeters: number; createdAt: Date; activityCount: number; followerCount: number; followingCount: number } | undefined>;
+
+  followUser(followerId: string, followingId: string): Promise<void>;
+  unfollowUser(followerId: string, followingId: string): Promise<void>;
+  isFollowing(followerId: string, followingId: string): Promise<boolean>;
+  getFollowers(userId: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]>;
+  getFollowing(userId: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]>;
+
+  getMonthlyGlobalParticipantCount(monthKey: string): Promise<number>;
+  getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -242,6 +254,98 @@ export class DatabaseStorage implements IStorage {
   async getTitlesForMonth(monthKey: string): Promise<MonthlyTitle[]> {
     return db.select().from(monthlyTitles)
       .where(eq(monthlyTitles.monthKey, monthKey));
+  }
+
+  async searchUsers(query: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]> {
+    const results = await db.select({
+      id: users.id,
+      username: users.username,
+      totalAreaSqMeters: users.totalAreaSqMeters,
+    }).from(users)
+      .where(and(eq(users.verified, true), ilike(users.username, `%${query}%`)))
+      .orderBy(desc(users.totalAreaSqMeters))
+      .limit(20);
+    return results;
+  }
+
+  async getUserProfile(userId: string) {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return undefined;
+
+    const [activityResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(activities)
+      .where(eq(activities.userId, userId));
+
+    const [followerResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(follows)
+      .where(eq(follows.followingId, userId));
+
+    const [followingResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(follows)
+      .where(eq(follows.followerId, userId));
+
+    return {
+      id: user.id,
+      username: user.username,
+      totalAreaSqMeters: user.totalAreaSqMeters,
+      createdAt: user.createdAt,
+      activityCount: Number(activityResult?.count || 0),
+      followerCount: Number(followerResult?.count || 0),
+      followingCount: Number(followingResult?.count || 0),
+    };
+  }
+
+  async followUser(followerId: string, followingId: string): Promise<void> {
+    await db.insert(follows).values({ followerId, followingId }).onConflictDoNothing();
+  }
+
+  async unfollowUser(followerId: string, followingId: string): Promise<void> {
+    await db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+  }
+
+  async isFollowing(followerId: string, followingId: string): Promise<boolean> {
+    const [result] = await db.select().from(follows)
+      .where(and(eq(follows.followerId, followerId), eq(follows.followingId, followingId)));
+    return !!result;
+  }
+
+  async getFollowers(userId: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]> {
+    const results = await db
+      .select({ id: users.id, username: users.username, totalAreaSqMeters: users.totalAreaSqMeters })
+      .from(follows)
+      .innerJoin(users, eq(follows.followerId, users.id))
+      .where(eq(follows.followingId, userId))
+      .orderBy(desc(users.totalAreaSqMeters));
+    return results;
+  }
+
+  async getFollowing(userId: string): Promise<{ id: string; username: string; totalAreaSqMeters: number }[]> {
+    const results = await db
+      .select({ id: users.id, username: users.username, totalAreaSqMeters: users.totalAreaSqMeters })
+      .from(follows)
+      .innerJoin(users, eq(follows.followingId, users.id))
+      .where(eq(follows.followerId, userId))
+      .orderBy(desc(users.totalAreaSqMeters));
+    return results;
+  }
+
+  async getMonthlyGlobalParticipantCount(monthKey: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${activities.userId})` })
+      .from(activities)
+      .where(eq(activities.monthKey, monthKey));
+    return Number(result?.count || 0);
+  }
+
+  async getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${activities.userId})` })
+      .from(activities)
+      .where(and(eq(activities.monthKey, monthKey), eq(activities.neighborhoodName, neighborhoodName)));
+    return Number(result?.count || 0);
   }
 }
 

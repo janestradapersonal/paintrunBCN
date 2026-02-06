@@ -21,6 +21,10 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - **Monthly rankings**: Global and per-neighborhood, reset each month
 - **Neighborhood rankings**: Overlapping/repeated painting counts multiple times
 - **Titles/achievements**: Users earn titles when they win monthly rankings
+- **User profiles**: Public profile pages with trophy cabinet, painted map, and activity list
+- **User search**: Search for users by username from dashboard and rankings
+- **Follow system**: Follow/unfollow users, see followers and following lists
+- **Participant counts**: Rankings show total number of participants
 - View any ranked user's painted areas on the map
 
 ## Pages
@@ -30,6 +34,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `/login` - Login form
 - `/dashboard` - Authenticated user dashboard with map + activities + titles
 - `/rankings` - Rankings with Global/Neighborhoods tabs and month selector
+- `/profile/:userId` - Public user profile with trophy cabinet, map, followers/following
 
 ## API Routes
 - `POST /api/auth/register` - Register new user
@@ -40,17 +45,26 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `POST /api/activities/upload` - Upload GPX file (multipart/form-data)
 - `GET /api/activities?month=YYYY-MM` - List user's activities (optional month filter)
 - `GET /api/users/me/stats` - User stats (area + rank + titles)
-- `GET /api/rankings?month=YYYY-MM` - Monthly global rankings
-- `GET /api/rankings/neighborhoods?month=YYYY-MM` - Neighborhoods with activity
-- `GET /api/rankings/neighborhoods/:name?month=YYYY-MM` - Per-neighborhood leaderboard
+- `GET /api/users/search?q=query` - Search users by username
+- `GET /api/users/:userId/profile` - User profile with stats and follow status
 - `GET /api/users/:userId/activities?month=YYYY-MM` - Activities for specific user
 - `GET /api/users/:userId/titles` - User's won titles
+- `POST /api/users/:userId/follow` - Follow a user (auth required)
+- `POST /api/users/:userId/unfollow` - Unfollow a user (auth required)
+- `GET /api/users/:userId/followers` - User's followers list
+- `GET /api/users/:userId/following` - User's following list
+- `GET /api/rankings?month=YYYY-MM` - Monthly global rankings
+- `GET /api/rankings/participant-count?month=YYYY-MM` - Total participants for the month
+- `GET /api/rankings/neighborhoods?month=YYYY-MM` - Neighborhoods with activity
+- `GET /api/rankings/neighborhoods/:name?month=YYYY-MM` - Per-neighborhood leaderboard
+- `GET /api/rankings/neighborhoods/:name/participant-count?month=YYYY-MM` - Participants in a neighborhood
 
 ## Database Schema
-- `users` - id, email, username, passwordHash, verified, totalAreaSqMeters
+- `users` - id, email, username, passwordHash, verified, totalAreaSqMeters, createdAt
 - `verification_codes` - id, email, code, expiresAt, used
 - `activities` - id, userId, name, coordinates (jsonb), polygon (jsonb), areaSqMeters, distanceMeters, neighborhoodName, monthKey, uploadedAt
 - `monthly_titles` - id, userId, monthKey, titleType (global/neighborhood), neighborhoodName, rank, areaSqMeters
+- `follows` - id, followerId, followingId, createdAt (unique constraint on follower+following)
 - `session` - auto-managed by connect-pg-simple
 
 ## Monthly System
@@ -65,6 +79,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - Seed data creates 4 sample users with activities in current month
 - MaratonistaBCN has duplicate Raval activity to demo intensity and neighborhood overlap counting
 - Sample titles from previous month for 3 users
+- Sample follows between users to demo the follow system
 - Demo login: runner1@paintrunbcn.com / demo123
 - Theme defaults to dark mode (fits the CARTO dark map tiles)
 - Neighborhood detection uses turf.js booleanPointInPolygon with centroid fallback

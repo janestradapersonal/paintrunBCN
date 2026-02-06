@@ -20,6 +20,7 @@ import {
   Award,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import UserSearch from "@/components/user-search";
 
 function formatArea(sqm: number): string {
   if (sqm >= 1_000_000) return `${(sqm / 1_000_000).toFixed(2)} km²`;
@@ -108,16 +109,19 @@ export default function DashboardPage() {
               <span className="text-primary font-black">BCN</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <UserSearch className="w-40 lg:w-52" />
             <Link href="/rankings">
               <Button variant="ghost" size="sm" className="gap-1.5" data-testid="button-rankings">
                 <Trophy className="w-4 h-4" /> Ranking
               </Button>
             </Link>
-            <Badge variant="secondary" className="gap-1.5">
-              <MapPin className="w-3 h-3" />
-              {user.username}
-            </Badge>
+            <Link href={`/profile/${user.id}`}>
+              <Badge variant="secondary" className="gap-1.5 cursor-pointer">
+                <MapPin className="w-3 h-3" />
+                {user.username}
+              </Badge>
+            </Link>
             <Button variant="ghost" size="icon" onClick={handleLogout} data-testid="button-logout">
               <LogOut className="w-4 h-4" />
             </Button>

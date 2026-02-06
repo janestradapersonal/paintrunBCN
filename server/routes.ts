@@ -277,10 +277,70 @@ export async function registerRoutes(
     return res.json(acts);
   });
 
+  app.get("/api/users/search", async (req: Request, res: Response) => {
+    const q = (req.query.q as string) || "";
+    if (q.length < 2) return res.json([]);
+    const results = await storage.searchUsers(q);
+    return res.json(results);
+  });
+
   app.get("/api/users/:userId/titles", async (req: Request, res: Response) => {
     const userId = req.params.userId as string;
     const titles = await storage.getUserTitles(userId);
     return res.json(titles);
+  });
+
+  app.get("/api/users/:userId/profile", async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    const profile = await storage.getUserProfile(userId);
+    if (!profile) return res.status(404).json({ message: "Usuario no encontrado" });
+    
+    let isFollowing = false;
+    if (req.session.userId) {
+      isFollowing = await storage.isFollowing(req.session.userId, userId);
+    }
+    
+    return res.json({ ...profile, isFollowing });
+  });
+
+  app.post("/api/users/:userId/follow", requireAuth, async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    if (userId === req.session.userId) {
+      return res.status(400).json({ message: "No puedes seguirte a ti mismo" });
+    }
+    await storage.followUser(req.session.userId!, userId);
+    return res.json({ message: "Siguiendo" });
+  });
+
+  app.post("/api/users/:userId/unfollow", requireAuth, async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    await storage.unfollowUser(req.session.userId!, userId);
+    return res.json({ message: "Dejado de seguir" });
+  });
+
+  app.get("/api/users/:userId/followers", async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    const followers = await storage.getFollowers(userId);
+    return res.json(followers);
+  });
+
+  app.get("/api/users/:userId/following", async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    const following = await storage.getFollowing(userId);
+    return res.json(following);
+  });
+
+  app.get("/api/rankings/participant-count", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const count = await storage.getMonthlyGlobalParticipantCount(monthKey);
+    return res.json({ count });
+  });
+
+  app.get("/api/rankings/neighborhoods/:name/participant-count", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const name = req.params.name as string;
+    const count = await storage.getMonthlyNeighborhoodParticipantCount(name, monthKey);
+    return res.json({ count });
   });
 
   await seedDatabase();

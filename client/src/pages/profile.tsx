@@ -1,0 +1,413 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRoute, Link } from "wouter";
+import { useAuth } from "@/lib/auth";
+import type { Activity, MonthlyTitle } from "@shared/schema";
+import BarcelonaMap from "@/components/barcelona-map";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  ArrowLeft,
+  MapPin,
+  Trophy,
+  Ruler,
+  Award,
+  Users,
+  UserPlus,
+  UserMinus,
+  Activity as ActivityIcon,
+  Calendar,
+  Loader2,
+} from "lucide-react";
+import { useState } from "react";
+
+type UserProfile = {
+  id: string;
+  username: string;
+  totalAreaSqMeters: number;
+  createdAt: string;
+  activityCount: number;
+  followerCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+};
+
+type FollowUser = {
+  id: string;
+  username: string;
+  totalAreaSqMeters: number;
+};
+
+function formatArea(sqm: number): string {
+  if (sqm >= 1_000_000) return `${(sqm / 1_000_000).toFixed(2)} km²`;
+  if (sqm >= 10_000) return `${(sqm / 10_000).toFixed(2)} ha`;
+  return `${Math.round(sqm).toLocaleString("es")} m²`;
+}
+
+function formatMonth(monthKey: string): string {
+  const [y, m] = monthKey.split("-");
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  return `${months[parseInt(m) - 1]} ${y}`;
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  return `${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatDistance(meters: number): string {
+  if (meters >= 1000) return `${(meters / 1000).toFixed(2)} km`;
+  return `${Math.round(meters)} m`;
+}
+
+export default function ProfilePage() {
+  const [, params] = useRoute("/profile/:userId");
+  const userId = params?.userId || "";
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [followPending, setFollowPending] = useState(false);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+
+  const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
+    queryKey: ["/api/users", userId, "profile"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/profile`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading profile");
+      return res.json();
+    },
+    enabled: !!userId,
+  });
+
+  const { data: userActivities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
+    queryKey: ["/api/users", userId, "activities"],
+    enabled: !!userId,
+  });
+
+  const { data: titles = [] } = useQuery<MonthlyTitle[]>({
+    queryKey: ["/api/users", userId, "titles"],
+    enabled: !!userId,
+  });
+
+  const { data: followers = [] } = useQuery<FollowUser[]>({
+    queryKey: ["/api/users", userId, "followers"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/followers`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading followers");
+      return res.json();
+    },
+    enabled: !!userId && showFollowers,
+  });
+
+  const { data: following = [] } = useQuery<FollowUser[]>({
+    queryKey: ["/api/users", userId, "following"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/following`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading following");
+      return res.json();
+    },
+    enabled: !!userId && showFollowing,
+  });
+
+  const handleFollow = async () => {
+    if (!user || followPending) return;
+    setFollowPending(true);
+    try {
+      if (profile?.isFollowing) {
+        await apiRequest("POST", `/api/users/${userId}/unfollow`);
+      } else {
+        await apiRequest("POST", `/api/users/${userId}/follow`);
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", userId, "followers"] });
+    } finally {
+      setFollowPending(false);
+    }
+  };
+
+  const isOwnProfile = user?.id === userId;
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">Usuario no encontrado</p>
+            <Link href="/">
+              <Button variant="ghost" className="mt-4">Volver</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const globalTitles = titles.filter(t => t.titleType === "global");
+  const neighborhoodTitles = titles.filter(t => t.titleType === "neighborhood");
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Link href={user ? "/dashboard" : "/"}>
+              <Button variant="ghost" size="icon" data-testid="button-back-profile">
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            </Link>
+            <span className="text-xl font-bold tracking-tight">
+              <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
+            </span>
+          </div>
+          {user && !isOwnProfile && (
+            <Button
+              variant={profile.isFollowing ? "secondary" : "default"}
+              size="sm"
+              className="gap-1.5"
+              onClick={handleFollow}
+              disabled={followPending}
+              data-testid="button-follow-toggle"
+            >
+              {followPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : profile.isFollowing ? (
+                <UserMinus className="w-4 h-4" />
+              ) : (
+                <UserPlus className="w-4 h-4" />
+              )}
+              {profile.isFollowing ? "Dejar de seguir" : "Seguir"}
+            </Button>
+          )}
+          {isOwnProfile && (
+            <Badge variant="secondary" className="gap-1.5">
+              Tu perfil
+            </Badge>
+          )}
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-col lg:flex-row">
+        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto">
+          <div className="flex flex-col items-center text-center gap-3">
+            <Avatar className="w-16 h-16">
+              <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                {profile.username.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-xl font-bold" data-testid="text-profile-username">{profile.username}</h2>
+              <p className="text-xs text-muted-foreground flex items-center gap-1 justify-center mt-1">
+                <Calendar className="w-3 h-3" />
+                Miembro desde {formatDate(profile.createdAt)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Card>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <Ruler className="w-4 h-4 text-primary mb-1" />
+                <span className="text-[10px] text-muted-foreground">Área total</span>
+                <span className="text-sm font-bold" data-testid="text-profile-area">
+                  {formatArea(profile.totalAreaSqMeters)}
+                </span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <ActivityIcon className="w-4 h-4 text-primary mb-1" />
+                <span className="text-[10px] text-muted-foreground">Actividades</span>
+                <span className="text-sm font-bold" data-testid="text-profile-activities">
+                  {profile.activityCount}
+                </span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 flex flex-col items-center text-center">
+                <Trophy className="w-4 h-4 text-primary mb-1" />
+                <span className="text-[10px] text-muted-foreground">Títulos</span>
+                <span className="text-sm font-bold" data-testid="text-profile-titles-count">
+                  {titles.length}
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setShowFollowers(!showFollowers); setShowFollowing(false); }}
+              className={`flex-1 flex flex-col items-center p-2 rounded-md transition-colors ${showFollowers ? "bg-accent" : "hover-elevate"}`}
+              data-testid="button-show-followers"
+            >
+              <span className="text-sm font-bold" data-testid="text-follower-count">{profile.followerCount}</span>
+              <span className="text-[10px] text-muted-foreground">Seguidores</span>
+            </button>
+            <button
+              onClick={() => { setShowFollowing(!showFollowing); setShowFollowers(false); }}
+              className={`flex-1 flex flex-col items-center p-2 rounded-md transition-colors ${showFollowing ? "bg-accent" : "hover-elevate"}`}
+              data-testid="button-show-following"
+            >
+              <span className="text-sm font-bold" data-testid="text-following-count">{profile.followingCount}</span>
+              <span className="text-[10px] text-muted-foreground">Siguiendo</span>
+            </button>
+          </div>
+
+          {showFollowers && (
+            <Card>
+              <CardContent className="p-3">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Seguidores ({followers.length})
+                </h3>
+                {followers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">Aún no tiene seguidores</p>
+                ) : (
+                  <div className="space-y-1">
+                    {followers.map(f => (
+                      <Link key={f.id} href={`/profile/${f.id}`}>
+                        <div className="flex items-center gap-2 p-1.5 rounded-md hover-elevate" data-testid={`link-follower-${f.id}`}>
+                          <Avatar className="w-6 h-6">
+                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                              {f.username.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm truncate">{f.username}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {showFollowing && (
+            <Card>
+              <CardContent className="p-3">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> Siguiendo ({following.length})
+                </h3>
+                {following.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">No sigue a nadie</p>
+                ) : (
+                  <div className="space-y-1">
+                    {following.map(f => (
+                      <Link key={f.id} href={`/profile/${f.id}`}>
+                        <div className="flex items-center gap-2 p-1.5 rounded-md hover-elevate" data-testid={`link-following-${f.id}`}>
+                          <Avatar className="w-6 h-6">
+                            <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                              {f.username.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm truncate">{f.username}</span>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {titles.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5" /> Vitrina de trofeos
+                </h3>
+                {globalTitles.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Global</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {globalTitles.map(t => (
+                        <Badge key={t.id} variant="secondary" className="text-[10px] gap-1" data-testid={`badge-title-${t.id}`}>
+                          <Trophy className="w-2.5 h-2.5" />
+                          #{t.rank} {formatMonth(t.monthKey)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {neighborhoodTitles.length > 0 && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">Barrios</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {neighborhoodTitles.map(t => (
+                        <Badge key={t.id} variant="secondary" className="text-[10px] gap-1" data-testid={`badge-title-${t.id}`}>
+                          <MapPin className="w-2.5 h-2.5" />
+                          #{t.rank} {t.neighborhoodName} {formatMonth(t.monthKey)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+              <ActivityIcon className="w-4 h-4" />
+              Actividades ({userActivities.length})
+            </h3>
+            {activitiesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
+              </div>
+            ) : userActivities.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-6">Sin actividades</p>
+            ) : (
+              <div className="space-y-2">
+                {userActivities.map(activity => (
+                  <Card key={activity.id} className="hover-elevate">
+                    <CardContent className="p-3">
+                      <p className="font-medium text-sm truncate" data-testid={`text-activity-${activity.id}`}>
+                        {activity.name}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Ruler className="w-3 h-3" />
+                          {formatArea(activity.areaSqMeters)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {formatDistance(activity.distanceMeters)}
+                        </span>
+                        {activity.neighborhoodName && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {activity.neighborhoodName}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <main className="flex-1 relative">
+          <BarcelonaMap
+            activities={userActivities}
+            className="w-full h-full min-h-[400px] lg:min-h-0"
+            interactive={true}
+            userColor="#FF6B35"
+            intensityMode={true}
+          />
+        </main>
+      </div>
+    </div>
+  );
+}

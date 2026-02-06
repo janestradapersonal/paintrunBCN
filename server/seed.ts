@@ -182,6 +182,12 @@ export async function seedDatabase() {
     await storage.createMonthlyTitle(user2.id, lastMonth, "neighborhood", sampleNeighborhood, 1, 200000);
     await storage.createMonthlyTitle(user3.id, lastMonth, "neighborhood", "la Dreta de l'Eixample", 1, 190000);
 
+    await storage.followUser(user1.id, user2.id);
+    await storage.followUser(user1.id, user3.id);
+    await storage.followUser(user2.id, user1.id);
+    await storage.followUser(user3.id, user1.id);
+    await storage.followUser(user4.id, user1.id);
+
     console.log("[seed] Database seeded successfully!");
   } catch (error) {
     console.error("[seed] Error seeding database:", error);
