@@ -103,7 +103,7 @@ export default function BarcelonaMap({
   const renderedPolygonKeys = new Set<string>();
 
   return (
-    <div className={`relative ${className}`} data-testid="map-container">
+    <div className={`relative ${className}`} data-testid="map-container" style={!interactive ? { pointerEvents: "none" } : undefined}>
       <MapContainer
         center={BARCELONA_CENTER}
         zoom={BARCELONA_ZOOM}

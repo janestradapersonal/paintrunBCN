@@ -19,14 +19,14 @@ export default function LandingPage() {
   if (!entered) {
     return (
       <div className="fixed inset-0 z-50 bg-background">
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 pointer-events-none">
           <BarcelonaMap
             className="w-full h-full"
             interactive={false}
             showNeighborhoods={true}
           />
-          <div className="absolute inset-0 bg-background/70" />
         </div>
+        <div className="absolute inset-0 bg-background/80 pointer-events-none" />
         <div className="relative z-10 flex items-center justify-center w-full h-full px-4">
           <div className="flex flex-col items-center text-center max-w-lg">
             <span className="text-3xl md:text-5xl font-black tracking-tight mb-4" data-testid="text-splash-logo">
@@ -82,7 +82,7 @@ export default function LandingPage() {
       </header>
 
       <section className="relative pt-16 overflow-hidden">
-        <div className="absolute inset-0 pt-16">
+        <div className="absolute inset-0 pt-16 pointer-events-none">
           <BarcelonaMap
             className="w-full h-full"
             interactive={false}
