@@ -25,6 +25,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - **User search**: Search for users by username from dashboard and rankings
 - **Follow system**: Follow/unfollow users, see followers and following lists
 - **Participant counts**: Rankings show total number of participants
+- **Custom paint color**: Users can choose their paint color from presets or a custom color picker in their profile
 - View any ranked user's painted areas on the map
 
 ## Pages
@@ -45,6 +46,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `POST /api/activities/upload` - Upload GPX file (multipart/form-data)
 - `GET /api/activities?month=YYYY-MM` - List user's activities (optional month filter)
 - `GET /api/users/me/stats` - User stats (area + rank + titles)
+- `PUT /api/users/me/paint-color` - Update user's paint color (hex format)
 - `GET /api/users/search?q=query` - Search users by username
 - `GET /api/users/:userId/profile` - User profile with stats and follow status
 - `GET /api/users/:userId/activities?month=YYYY-MM` - Activities for specific user
@@ -60,7 +62,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `GET /api/rankings/neighborhoods/:name/participant-count?month=YYYY-MM` - Participants in a neighborhood
 
 ## Database Schema
-- `users` - id, email, username, passwordHash, verified, totalAreaSqMeters, createdAt
+- `users` - id, email, username, passwordHash, verified, totalAreaSqMeters, paintColor, createdAt
 - `verification_codes` - id, email, code, expiresAt, used
 - `activities` - id, userId, name, coordinates (jsonb), polygon (jsonb), areaSqMeters, distanceMeters, neighborhoodName, monthKey, uploadedAt
 - `monthly_titles` - id, userId, monthKey, titleType (global/neighborhood), neighborhoodName, rank, areaSqMeters
