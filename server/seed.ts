@@ -1,4 +1,5 @@
 import { storage } from "./storage";
+import { detectNeighborhood, getMonthKey } from "./gpx";
 import bcrypt from "bcryptjs";
 
 const SAMPLE_ACTIVITIES = [
@@ -132,6 +133,8 @@ export async function seedDatabase() {
     console.log("[seed] Seeding database with sample data...");
 
     const password = await bcrypt.hash("demo123", 10);
+    const currentMonth = getMonthKey();
+    const lastMonth = getMonthKey(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
     const user1 = await storage.createUser("runner1@paintrunbcn.com", "MaratonistaBCN", password);
     await storage.verifyUser("runner1@paintrunbcn.com");
@@ -146,24 +149,38 @@ export async function seedDatabase() {
     await storage.verifyUser("runner4@paintrunbcn.com");
 
     for (const a of [SAMPLE_ACTIVITIES[0], SAMPLE_ACTIVITIES[1], SAMPLE_ACTIVITIES[3]]) {
-      await storage.createActivity(user1.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters);
+      const neighborhood = detectNeighborhood(a.coordinates);
+      await storage.createActivity(user1.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
     }
     await storage.updateUserArea(user1.id);
 
     for (const a of [SAMPLE_ACTIVITIES[2], SAMPLE_ACTIVITIES[4]]) {
-      await storage.createActivity(user2.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters);
+      const neighborhood = detectNeighborhood(a.coordinates);
+      await storage.createActivity(user2.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
     }
     await storage.updateUserArea(user2.id);
 
     for (const a of [SAMPLE_ACTIVITIES[5], SAMPLE_ACTIVITIES[6]]) {
-      await storage.createActivity(user3.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters);
+      const neighborhood = detectNeighborhood(a.coordinates);
+      await storage.createActivity(user3.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
     }
     await storage.updateUserArea(user3.id);
 
     for (const a of [SAMPLE_ACTIVITIES[0]]) {
-      await storage.createActivity(user4.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters);
+      const neighborhood = detectNeighborhood(a.coordinates);
+      await storage.createActivity(user4.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
     }
     await storage.updateUserArea(user4.id);
+
+    const neighborhood0 = detectNeighborhood(SAMPLE_ACTIVITIES[0].coordinates);
+    await storage.createActivity(user1.id, "Volta pel Raval (2a)", SAMPLE_ACTIVITIES[0].coordinates, SAMPLE_ACTIVITIES[0].polygon, SAMPLE_ACTIVITIES[0].areaSqMeters, SAMPLE_ACTIVITIES[0].distanceMeters, neighborhood0, currentMonth);
+    await storage.updateUserArea(user1.id);
+
+    await storage.createMonthlyTitle(user1.id, lastMonth, "global", null, 1, 500000);
+    
+    const sampleNeighborhood = neighborhood0 || "el Raval";
+    await storage.createMonthlyTitle(user2.id, lastMonth, "neighborhood", sampleNeighborhood, 1, 200000);
+    await storage.createMonthlyTitle(user3.id, lastMonth, "neighborhood", "la Dreta de l'Eixample", 1, 190000);
 
     console.log("[seed] Database seeded successfully!");
   } catch (error) {

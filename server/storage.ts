@@ -1,7 +1,7 @@
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { users, activities, verificationCodes, type User, type Activity, type VerificationCode } from "@shared/schema";
+import { users, activities, verificationCodes, monthlyTitles, type User, type Activity, type VerificationCode, type MonthlyTitle } from "@shared/schema";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -21,12 +21,20 @@ export interface IStorage {
   getVerificationCode(email: string, code: string): Promise<VerificationCode | undefined>;
   markCodeUsed(id: string): Promise<void>;
 
-  createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number): Promise<Activity>;
+  createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string): Promise<Activity>;
   getActivitiesByUser(userId: string): Promise<Activity[]>;
+  getActivitiesByUserAndMonth(userId: string, monthKey: string): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | undefined>;
 
   getRankings(): Promise<(User & { rank: number })[]>;
+  getMonthlyGlobalRankings(monthKey: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]>;
+  getMonthlyNeighborhoodRankings(monthKey: string): Promise<{ neighborhoodName: string; topUser: string; topUserId: string; totalAreaSqMeters: number; runnerCount: number }[]>;
+  getNeighborhoodLeaderboard(neighborhoodName: string, monthKey: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]>;
   getUserRank(userId: string): Promise<number>;
+
+  createMonthlyTitle(userId: string, monthKey: string, titleType: string, neighborhoodName: string | null, rank: number, areaSqMeters: number): Promise<MonthlyTitle>;
+  getUserTitles(userId: string): Promise<MonthlyTitle[]>;
+  getTitlesForMonth(monthKey: string): Promise<MonthlyTitle[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -80,7 +88,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(verificationCodes).set({ used: true }).where(eq(verificationCodes.id, id));
   }
 
-  async createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number): Promise<Activity> {
+  async createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string): Promise<Activity> {
     const [activity] = await db.insert(activities).values({
       userId,
       name,
@@ -88,12 +96,20 @@ export class DatabaseStorage implements IStorage {
       polygon,
       areaSqMeters,
       distanceMeters,
+      neighborhoodName,
+      monthKey,
     }).returning();
     return activity;
   }
 
   async getActivitiesByUser(userId: string): Promise<Activity[]> {
     return db.select().from(activities).where(eq(activities.userId, userId)).orderBy(desc(activities.uploadedAt));
+  }
+
+  async getActivitiesByUserAndMonth(userId: string, monthKey: string): Promise<Activity[]> {
+    return db.select().from(activities)
+      .where(and(eq(activities.userId, userId), eq(activities.monthKey, monthKey)))
+      .orderBy(desc(activities.uploadedAt));
   }
 
   async getActivity(id: string): Promise<Activity | undefined> {
@@ -110,10 +126,122 @@ export class DatabaseStorage implements IStorage {
     return allUsers.map((u, i) => ({ ...u, rank: i + 1 }));
   }
 
+  async getMonthlyGlobalRankings(monthKey: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]> {
+    const results = await db
+      .select({
+        userId: activities.userId,
+        username: users.username,
+        totalAreaSqMeters: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
+      })
+      .from(activities)
+      .innerJoin(users, eq(activities.userId, users.id))
+      .where(eq(activities.monthKey, monthKey))
+      .groupBy(activities.userId, users.username)
+      .orderBy(desc(sql`SUM(${activities.areaSqMeters})`));
+
+    return results.map((r, i) => ({
+      userId: r.userId,
+      username: r.username,
+      totalAreaSqMeters: Number(r.totalAreaSqMeters),
+      rank: i + 1,
+    }));
+  }
+
+  async getMonthlyNeighborhoodRankings(monthKey: string): Promise<{ neighborhoodName: string; topUser: string; topUserId: string; totalAreaSqMeters: number; runnerCount: number }[]> {
+    const results = await db
+      .select({
+        neighborhoodName: activities.neighborhoodName,
+        totalAreaSqMeters: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
+        runnerCount: sql<number>`COUNT(DISTINCT ${activities.userId})`,
+      })
+      .from(activities)
+      .where(and(
+        eq(activities.monthKey, monthKey),
+        sql`${activities.neighborhoodName} IS NOT NULL`
+      ))
+      .groupBy(activities.neighborhoodName)
+      .orderBy(desc(sql`SUM(${activities.areaSqMeters})`));
+
+    const enriched = [];
+    for (const r of results) {
+      const topRunnerResult = await db
+        .select({
+          userId: activities.userId,
+          username: users.username,
+          total: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
+        })
+        .from(activities)
+        .innerJoin(users, eq(activities.userId, users.id))
+        .where(and(
+          eq(activities.monthKey, monthKey),
+          eq(activities.neighborhoodName, r.neighborhoodName!)
+        ))
+        .groupBy(activities.userId, users.username)
+        .orderBy(desc(sql`SUM(${activities.areaSqMeters})`))
+        .limit(1);
+
+      enriched.push({
+        neighborhoodName: r.neighborhoodName!,
+        topUser: topRunnerResult[0]?.username || "—",
+        topUserId: topRunnerResult[0]?.userId || "",
+        totalAreaSqMeters: Number(r.totalAreaSqMeters),
+        runnerCount: Number(r.runnerCount),
+      });
+    }
+    return enriched;
+  }
+
+  async getNeighborhoodLeaderboard(neighborhoodName: string, monthKey: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]> {
+    const results = await db
+      .select({
+        userId: activities.userId,
+        username: users.username,
+        totalAreaSqMeters: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
+      })
+      .from(activities)
+      .innerJoin(users, eq(activities.userId, users.id))
+      .where(and(
+        eq(activities.monthKey, monthKey),
+        eq(activities.neighborhoodName, neighborhoodName)
+      ))
+      .groupBy(activities.userId, users.username)
+      .orderBy(desc(sql`SUM(${activities.areaSqMeters})`));
+
+    return results.map((r, i) => ({
+      userId: r.userId,
+      username: r.username,
+      totalAreaSqMeters: Number(r.totalAreaSqMeters),
+      rank: i + 1,
+    }));
+  }
+
   async getUserRank(userId: string): Promise<number> {
     const rankings = await this.getRankings();
     const idx = rankings.findIndex((u) => u.id === userId);
     return idx >= 0 ? idx + 1 : 0;
+  }
+
+  async createMonthlyTitle(userId: string, monthKey: string, titleType: string, neighborhoodName: string | null, rank: number, areaSqMeters: number): Promise<MonthlyTitle> {
+    const [title] = await db.insert(monthlyTitles).values({
+      userId,
+      monthKey,
+      titleType,
+      neighborhoodName,
+      rank,
+      areaSqMeters,
+    }).returning();
+    return title;
+  }
+
+  async getUserTitles(userId: string): Promise<MonthlyTitle[]> {
+    return db.select().from(monthlyTitles)
+      .where(eq(monthlyTitles.userId, userId))
+      .orderBy(desc(monthlyTitles.monthKey));
+  }
+
+  async getTitlesForMonth(monthKey: string): Promise<MonthlyTitle[]> {
+    return db.select().from(monthlyTitles)
+      .where(eq(monthlyTitles.monthKey, monthKey));
   }
 }
 

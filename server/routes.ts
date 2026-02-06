@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import { registerSchema, loginSchema, verifySchema } from "@shared/schema";
-import { parseGPX, calculateDistance, detectClosedLoop, calculateArea } from "./gpx";
+import { parseGPX, calculateDistance, detectClosedLoop, calculateArea, detectNeighborhood, getMonthKey } from "./gpx";
 import { seedDatabase } from "./seed";
 import bcrypt from "bcryptjs";
 import session from "express-session";
@@ -189,6 +189,8 @@ export async function registerRoutes(
       const distance = calculateDistance(coordinates);
       const polygon = detectClosedLoop(coordinates);
       const area = polygon ? calculateArea(polygon) : 0;
+      const neighborhoodName = detectNeighborhood(coordinates);
+      const monthKey = getMonthKey();
 
       const activity = await storage.createActivity(
         req.session.userId!,
@@ -196,7 +198,9 @@ export async function registerRoutes(
         coordinates,
         polygon,
         area,
-        distance
+        distance,
+        neighborhoodName,
+        monthKey
       );
 
       await storage.updateUserArea(req.session.userId!);
@@ -209,6 +213,11 @@ export async function registerRoutes(
   });
 
   app.get("/api/activities", requireAuth, async (req: Request, res: Response) => {
+    const monthKey = req.query.month as string | undefined;
+    if (monthKey) {
+      const activities = await storage.getActivitiesByUserAndMonth(req.session.userId!, monthKey);
+      return res.json(activities);
+    }
     const activities = await storage.getActivitiesByUser(req.session.userId!);
     return res.json(activities);
   });
@@ -217,13 +226,22 @@ export async function registerRoutes(
     const user = await storage.getUser(req.session.userId!);
     if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
     const rank = await storage.getUserRank(user.id);
+    const titles = await storage.getUserTitles(user.id);
     return res.json({
       totalAreaSqMeters: user.totalAreaSqMeters,
       rank,
+      titles,
     });
   });
 
-  app.get("/api/rankings", async (_req: Request, res: Response) => {
+  app.get("/api/rankings", async (req: Request, res: Response) => {
+    const monthKey = req.query.month as string | undefined;
+    
+    if (monthKey) {
+      const rankings = await storage.getMonthlyGlobalRankings(monthKey);
+      return res.json(rankings);
+    }
+
     const rankings = await storage.getRankings();
     return res.json(
       rankings.map((u) => ({
@@ -235,9 +253,34 @@ export async function registerRoutes(
     );
   });
 
+  app.get("/api/rankings/neighborhoods", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const rankings = await storage.getMonthlyNeighborhoodRankings(monthKey);
+    return res.json(rankings);
+  });
+
+  app.get("/api/rankings/neighborhoods/:name", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const name = req.params.name as string;
+    const leaderboard = await storage.getNeighborhoodLeaderboard(name, monthKey);
+    return res.json(leaderboard);
+  });
+
   app.get("/api/users/:userId/activities", async (req: Request, res: Response) => {
-    const activities = await storage.getActivitiesByUser(req.params.userId);
-    return res.json(activities);
+    const userId = req.params.userId as string;
+    const monthKey = req.query.month as string | undefined;
+    if (monthKey) {
+      const acts = await storage.getActivitiesByUserAndMonth(userId, monthKey);
+      return res.json(acts);
+    }
+    const acts = await storage.getActivitiesByUser(userId);
+    return res.json(acts);
+  });
+
+  app.get("/api/users/:userId/titles", async (req: Request, res: Response) => {
+    const userId = req.params.userId as string;
+    const titles = await storage.getUserTitles(userId);
+    return res.json(titles);
   });
 
   await seedDatabase();

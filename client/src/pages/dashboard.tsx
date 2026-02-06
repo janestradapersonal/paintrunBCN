@@ -1,11 +1,10 @@
 import { useState, useRef } from "react";
 import { useAuth } from "@/lib/auth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import type { Activity } from "@shared/schema";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
@@ -18,6 +17,7 @@ import {
   FileUp,
   Ruler,
   Activity as ActivityIcon,
+  Award,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,6 +32,12 @@ function formatDistance(meters: number): string {
   return `${Math.round(meters)} m`;
 }
 
+function formatMonth(monthKey: string): string {
+  const [y, m] = monthKey.split("-");
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  return `${months[parseInt(m) - 1]} ${y}`;
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -44,7 +50,7 @@ export default function DashboardPage() {
     queryKey: ["/api/activities"],
   });
 
-  const { data: profile } = useQuery<{ totalAreaSqMeters: number; rank: number }>({
+  const { data: profile } = useQuery<{ totalAreaSqMeters: number; rank: number; titles: MonthlyTitle[] }>({
     queryKey: ["/api/users/me/stats"],
   });
 
@@ -88,6 +94,8 @@ export default function DashboardPage() {
     navigate("/login");
     return null;
   }
+
+  const titles = profile?.titles || [];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -139,6 +147,27 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          {titles.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5" /> Títulos ganados ({titles.length})
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {titles.map((t) => (
+                    <Badge key={t.id} variant="secondary" className="text-[10px] gap-1" data-testid={`badge-title-${t.id}`}>
+                      <Award className="w-2.5 h-2.5" />
+                      {t.titleType === "global"
+                        ? `Global #${t.rank}`
+                        : `${t.neighborhoodName} #${t.rank}`}
+                      {" "}{formatMonth(t.monthKey)}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div>
             <input
@@ -198,6 +227,11 @@ export default function DashboardPage() {
                           <MapPin className="w-3 h-3" />
                           {formatDistance(activity.distanceMeters)}
                         </span>
+                        {activity.neighborhoodName && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            {activity.neighborhoodName}
+                          </Badge>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -213,6 +247,7 @@ export default function DashboardPage() {
             className="w-full h-full min-h-[400px] lg:min-h-0"
             interactive={true}
             userColor="#FF6B35"
+            intensityMode={true}
           />
         </main>
       </div>

@@ -1,5 +1,78 @@
 import { XMLParser } from "fast-xml-parser";
 import * as turf from "@turf/turf";
+import fs from "fs";
+import path from "path";
+import type { FeatureCollection, Polygon as GeoPolygon, MultiPolygon } from "geojson";
+
+let neighborhoodsCache: FeatureCollection | null = null;
+
+function loadNeighborhoods(): FeatureCollection {
+  if (neighborhoodsCache) return neighborhoodsCache;
+  const filePath = path.join(process.cwd(), "client", "public", "data", "barris.geojson");
+  const raw = fs.readFileSync(filePath, "utf-8");
+  neighborhoodsCache = JSON.parse(raw) as FeatureCollection;
+  return neighborhoodsCache;
+}
+
+export function detectNeighborhood(coordinates: number[][]): string | null {
+  if (coordinates.length < 2) return null;
+  try {
+    const geojson = loadNeighborhoods();
+    const midIdx = Math.floor(coordinates.length / 2);
+    const centroid = coordinates[midIdx];
+    const pt = turf.point(centroid);
+
+    for (const feature of geojson.features) {
+      if (
+        feature.geometry.type === "Polygon" ||
+        feature.geometry.type === "MultiPolygon"
+      ) {
+        if (turf.booleanPointInPolygon(pt, feature as any)) {
+          return (feature.properties?.NOM as string) || null;
+        }
+      }
+    }
+
+    let minDist = Infinity;
+    let closest: string | null = null;
+    for (const feature of geojson.features) {
+      if (
+        feature.geometry.type === "Polygon" ||
+        feature.geometry.type === "MultiPolygon"
+      ) {
+        try {
+          const center = turf.centroid(feature as any);
+          const dist = turf.distance(pt, center);
+          if (dist < minDist) {
+            minDist = dist;
+            closest = (feature.properties?.NOM as string) || null;
+          }
+        } catch {}
+      }
+    }
+    return closest;
+  } catch (err) {
+    console.error("[gpx] Error detecting neighborhood:", err);
+    return null;
+  }
+}
+
+export function getMonthKey(date?: Date): string {
+  const d = date || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function getAllNeighborhoodNames(): string[] {
+  try {
+    const geojson = loadNeighborhoods();
+    return geojson.features
+      .map((f) => f.properties?.NOM as string)
+      .filter(Boolean)
+      .sort();
+  } catch {
+    return [];
+  }
+}
 
 export function parseGPX(xmlContent: string): {
   name: string;
