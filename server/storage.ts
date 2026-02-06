@@ -1,7 +1,8 @@
-import { eq, desc, sql, and, or, ilike } from "drizzle-orm";
+import { eq, desc, sql, and, or, ilike, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { users, activities, verificationCodes, monthlyTitles, follows, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow } from "@shared/schema";
+import * as turf from "@turf/turf";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
@@ -48,6 +49,9 @@ export interface IStorage {
 
   getMonthlyGlobalParticipantCount(monthKey: string): Promise<number>;
   getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number>;
+
+  getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
+  getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -352,6 +356,152 @@ export class DatabaseStorage implements IStorage {
       .from(activities)
       .where(and(eq(activities.monthKey, monthKey), eq(activities.neighborhoodName, neighborhoodName)));
     return Number(result?.count || 0);
+  }
+
+  private computeTerritories(monthActivities: Activity[], userMap: Map<string, { username: string; paintColor: string }>): Map<string, { polygons: any[]; totalArea: number }> {
+    const BARCELONA_AREA_SQM = 101_400_000;
+    const result = new Map<string, { polygons: any[]; totalArea: number }>();
+
+    const withPolygons = monthActivities
+      .filter(a => a.polygon && (a.polygon as number[][]).length >= 4)
+      .sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime());
+
+    if (withPolygons.length === 0) return result;
+
+    const activityPolygons: { userId: string; turfPoly: any; uploadedAt: Date }[] = [];
+    for (const act of withPolygons) {
+      try {
+        const coords = act.polygon as number[][];
+        const closed = coords[0][0] === coords[coords.length - 1][0] && coords[0][1] === coords[coords.length - 1][1]
+          ? coords
+          : [...coords, coords[0]];
+        if (closed.length < 4) continue;
+        const poly = turf.polygon([closed]);
+        activityPolygons.push({ userId: act.userId, turfPoly: poly, uploadedAt: new Date(act.uploadedAt) });
+      } catch {
+        continue;
+      }
+    }
+
+    for (let i = 0; i < activityPolygons.length; i++) {
+      const act = activityPolygons[i];
+      let remaining: any = act.turfPoly;
+
+      for (let j = i + 1; j < activityPolygons.length; j++) {
+        const later = activityPolygons[j];
+        if (later.userId === act.userId) continue;
+        try {
+          const diff = turf.difference(
+            turf.featureCollection([remaining, later.turfPoly])
+          );
+          if (!diff) {
+            remaining = null;
+            break;
+          }
+          remaining = diff;
+        } catch {
+          continue;
+        }
+      }
+
+      if (!remaining) continue;
+
+      const userId = act.userId;
+      if (!result.has(userId)) {
+        result.set(userId, { polygons: [], totalArea: 0 });
+      }
+      const entry = result.get(userId)!;
+
+      try {
+        const area = turf.area(remaining);
+        entry.totalArea += area;
+
+        if (remaining.geometry.type === "Polygon") {
+          entry.polygons.push(remaining.geometry.coordinates);
+        } else if (remaining.geometry.type === "MultiPolygon") {
+          for (const poly of remaining.geometry.coordinates) {
+            entry.polygons.push(poly);
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return result;
+  }
+
+  async getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]> {
+    const BARCELONA_AREA_SQM = 101_400_000;
+
+    const monthActivities = await db.select().from(activities)
+      .where(eq(activities.monthKey, monthKey))
+      .orderBy(asc(activities.uploadedAt));
+
+    const userIdSet = new Set(monthActivities.map(a => a.userId));
+    const userIds = Array.from(userIdSet);
+    if (userIds.length === 0) return [];
+
+    const userMap = new Map<string, { username: string; paintColor: string }>();
+    for (const uid of userIds) {
+      const [u] = await db.select({ username: users.username, paintColor: users.paintColor }).from(users).where(eq(users.id, uid));
+      if (u) userMap.set(uid, u);
+    }
+
+    const territories = this.computeTerritories(monthActivities, userMap);
+
+    const rankings: { userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[] = [];
+    const terrEntries = Array.from(territories.entries());
+    for (const [userId, data] of terrEntries) {
+      const userInfo = userMap.get(userId);
+      if (!userInfo || data.totalArea <= 0) continue;
+      rankings.push({
+        userId,
+        username: userInfo.username,
+        paintColor: userInfo.paintColor,
+        territorySqMeters: Math.round(data.totalArea),
+        territoryPercent: parseFloat(((data.totalArea / BARCELONA_AREA_SQM) * 100).toFixed(4)),
+        rank: 0,
+      });
+    }
+
+    rankings.sort((a, b) => b.territorySqMeters - a.territorySqMeters);
+    rankings.forEach((r, i) => { r.rank = i + 1; });
+
+    return rankings;
+  }
+
+  async getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]> {
+    const monthActivities = await db.select().from(activities)
+      .where(eq(activities.monthKey, monthKey))
+      .orderBy(asc(activities.uploadedAt));
+
+    const userIdSet = new Set(monthActivities.map(a => a.userId));
+    const userIds = Array.from(userIdSet);
+    if (userIds.length === 0) return [];
+
+    const userMap = new Map<string, { username: string; paintColor: string }>();
+    for (const uid of userIds) {
+      const [u] = await db.select({ username: users.username, paintColor: users.paintColor }).from(users).where(eq(users.id, uid));
+      if (u) userMap.set(uid, u);
+    }
+
+    const territories = this.computeTerritories(monthActivities, userMap);
+
+    const result: { userId: string; username: string; paintColor: string; polygons: number[][][] }[] = [];
+    const terrEntries = Array.from(territories.entries());
+    for (const [userId, data] of terrEntries) {
+      const userInfo = userMap.get(userId);
+      if (!userInfo || data.polygons.length === 0) continue;
+      result.push({
+        userId,
+        username: userInfo.username,
+        paintColor: userInfo.paintColor,
+        polygons: data.polygons,
+      });
+    }
+
+    return result;
   }
 }
 

@@ -1,7 +1,7 @@
 # paintrunBCN
 
 ## Overview
-paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by uploading their Strava activities (GPX files). When a route closes a loop, the enclosed area gets painted on a map of Barcelona's neighborhoods. Users compete in monthly global and per-neighborhood rankings.
+paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by uploading their Strava activities (GPX files). When a route closes a loop, the enclosed area gets painted on a map of Barcelona's neighborhoods. Users compete in monthly global and per-neighborhood rankings. The GLOBAL LIVE mode uses last-write-wins territorial control where newer activities paint over older ones.
 
 ## Architecture
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + shadcn/ui
@@ -26,6 +26,10 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - **Follow system**: Follow/unfollow users, see followers and following lists
 - **Participant counts**: Rankings show total number of participants
 - **Custom paint color**: Users can choose their paint color from presets or a custom color picker in their profile
+- **GLOBAL LIVE**: Territorial control mode - last-write-wins, newer activities paint over older ones
+  - Rankings show current territory owned (m² and % of Barcelona)
+  - Multi-user territory map with each user's paint color
+  - Territory computation uses turf.js polygon difference operations
 - View any ranked user's painted areas on the map
 
 ## Pages
@@ -60,6 +64,8 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `GET /api/rankings/neighborhoods?month=YYYY-MM` - Neighborhoods with activity
 - `GET /api/rankings/neighborhoods/:name?month=YYYY-MM` - Per-neighborhood leaderboard
 - `GET /api/rankings/neighborhoods/:name/participant-count?month=YYYY-MM` - Participants in a neighborhood
+- `GET /api/rankings/global-live?month=YYYY-MM` - GLOBAL LIVE territorial rankings (last-write-wins)
+- `GET /api/rankings/global-live/territories?month=YYYY-MM` - Territory polygons for map visualization
 
 ## Database Schema
 - `users` - id, email, username, passwordHash, verified, totalAreaSqMeters, paintColor, createdAt

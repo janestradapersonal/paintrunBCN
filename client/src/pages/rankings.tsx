@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map, ChevronLeft, ChevronRight, Award, Users } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map, ChevronLeft, ChevronRight, Award, Users, Zap, Percent } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
@@ -18,6 +18,22 @@ type RankedUser = {
   username: string;
   totalAreaSqMeters: number;
   rank: number;
+};
+
+type LiveRankedUser = {
+  userId: string;
+  username: string;
+  paintColor: string;
+  territorySqMeters: number;
+  territoryPercent: number;
+  rank: number;
+};
+
+type TerritoryData = {
+  userId: string;
+  username: string;
+  paintColor: string;
+  polygons: number[][][];
 };
 
 type NeighborhoodRanking = {
@@ -86,7 +102,7 @@ function MonthSelector({ monthKey, onChange }: { monthKey: string; onChange: (mk
 
 export default function RankingsPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"global" | "neighborhoods">("global");
+  const [tab, setTab] = useState<"global" | "neighborhoods" | "global-live">("global-live");
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null);
@@ -121,9 +137,31 @@ export default function RankingsPage() {
     enabled: tab === "neighborhoods" && !!selectedNeighborhood,
   });
 
+  const { data: liveRankings = [], isLoading: liveLoading } = useQuery<LiveRankedUser[]>({
+    queryKey: ["/api/rankings/global-live", "month", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/rankings/global-live?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading live rankings");
+      return res.json();
+    },
+    enabled: tab === "global-live",
+  });
+
+  const { data: liveTerritoriesData = [] } = useQuery<TerritoryData[]>({
+    queryKey: ["/api/rankings/global-live/territories", "month", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/rankings/global-live/territories?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading territories");
+      return res.json();
+    },
+    enabled: tab === "global-live",
+  });
+
   const activeUserId = tab === "global"
     ? selectedUserId
-    : (selectedUserId || (neighborhoodLeaderboard.length > 0 ? (neighborhoodLeaderboard[0].userId || neighborhoodLeaderboard[0].id) : null));
+    : tab === "neighborhoods"
+    ? (selectedUserId || (neighborhoodLeaderboard.length > 0 ? (neighborhoodLeaderboard[0].userId || neighborhoodLeaderboard[0].id) : null))
+    : selectedUserId;
 
   const { data: selectedActivities = [] } = useQuery<Activity[]>({
     queryKey: ["/api/users", activeUserId, "activities", "month", monthKey],
@@ -132,12 +170,12 @@ export default function RankingsPage() {
       if (!res.ok) throw new Error("Error loading activities");
       return res.json();
     },
-    enabled: !!activeUserId,
+    enabled: !!activeUserId && tab !== "global-live",
   });
 
   const { data: selectedUserTitles = [] } = useQuery<MonthlyTitle[]>({
     queryKey: ["/api/users", activeUserId, "titles"],
-    enabled: !!activeUserId,
+    enabled: !!activeUserId && tab === "global",
   });
 
   const { data: participantCount } = useQuery<{ count: number }>({
@@ -149,7 +187,7 @@ export default function RankingsPage() {
     },
   });
 
-  const isLoading = tab === "global" ? globalLoading : neighborhoodLoading;
+  const isLoading = tab === "global" ? globalLoading : tab === "neighborhoods" ? neighborhoodLoading : liveLoading;
 
   const globalPodium = useMemo(() => {
     return globalRankings.slice(0, 3).map(u => ({
@@ -187,6 +225,15 @@ export default function RankingsPage() {
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           <Button
+            variant={tab === "global-live" ? "default" : "ghost"}
+            size="sm"
+            className="gap-1.5"
+            onClick={() => { setTab("global-live"); setSelectedNeighborhood(null); setSelectedUserId(null); }}
+            data-testid="button-tab-global-live"
+          >
+            <Zap className="w-4 h-4" /> GLOBAL LIVE
+          </Button>
+          <Button
             variant={tab === "global" ? "default" : "ghost"}
             size="sm"
             className="gap-1.5"
@@ -221,6 +268,12 @@ export default function RankingsPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
+          ) : tab === "global-live" ? (
+            <GlobalLiveRankingList
+              rankings={liveRankings}
+              selectedUserId={selectedUserId}
+              onSelectUser={setSelectedUserId}
+            />
           ) : tab === "global" ? (
             <GlobalRankingList
               podium={globalPodium}
@@ -246,7 +299,14 @@ export default function RankingsPage() {
         </aside>
 
         <main className="flex-1 relative">
-          {activeUserId ? (
+          {tab === "global-live" ? (
+            <BarcelonaMap
+              className="w-full h-full min-h-[400px] lg:min-h-0"
+              interactive={true}
+              territories={liveTerritoriesData}
+              highlightUserId={selectedUserId}
+            />
+          ) : activeUserId ? (
             <BarcelonaMap
               activities={selectedActivities}
               className="w-full h-full min-h-[400px] lg:min-h-0"
@@ -280,6 +340,114 @@ export default function RankingsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+function GlobalLiveRankingList({
+  rankings,
+  selectedUserId,
+  onSelectUser,
+}: {
+  rankings: LiveRankedUser[];
+  selectedUserId: string | null;
+  onSelectUser: (id: string | null) => void;
+}) {
+  if (rankings.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <Zap className="w-12 h-12 mx-auto mb-4 opacity-30" />
+        <p className="text-sm">Sin territorios este mes</p>
+        <p className="text-xs mt-1">Sube una actividad para reclamar terreno</p>
+      </div>
+    );
+  }
+
+  const podium = rankings.slice(0, 3);
+  const rest = rankings.slice(3);
+
+  return (
+    <>
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Zap className="w-4 h-4 text-primary" />
+          <h3 className="font-bold text-sm">GLOBAL LIVE</h3>
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Territorio actual: el que pinta último se queda con la zona. Los territorios cambian con cada nueva actividad.
+        </p>
+      </div>
+
+      {podium.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {podium.map((u, i) => (
+            <button
+              key={u.userId}
+              onClick={() => onSelectUser(selectedUserId === u.userId ? null : u.userId)}
+              className={`flex flex-col items-center p-3 rounded-md transition-colors ${
+                selectedUserId === u.userId ? "bg-accent" : "hover-elevate"
+              }`}
+              data-testid={`button-live-podium-${i + 1}`}
+            >
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5"
+                style={{ backgroundColor: u.paintColor + "30", color: u.paintColor }}
+              >
+                {i === 0 ? <Crown className="w-5 h-5" /> : <Medal className="w-5 h-5" />}
+              </div>
+              <Link href={`/profile/${u.userId}`}>
+                <span className="text-xs font-bold truncate w-full text-center hover:underline">{u.username}</span>
+              </Link>
+              <span className="text-[10px] text-muted-foreground mt-0.5">{formatArea(u.territorySqMeters)}</span>
+              <Badge
+                variant="secondary"
+                className="mt-1 text-[10px] gap-0.5"
+              >
+                <Percent className="w-2.5 h-2.5" />
+                {u.territoryPercent}%
+              </Badge>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        {rest.map((u) => (
+          <button
+            key={u.userId}
+            onClick={() => onSelectUser(selectedUserId === u.userId ? null : u.userId)}
+            className={`w-full flex items-center gap-3 p-3 rounded-md transition-colors text-left ${
+              selectedUserId === u.userId ? "bg-accent" : "hover-elevate"
+            }`}
+            data-testid={`button-live-user-${u.userId}`}
+          >
+            <span className="text-sm font-bold text-muted-foreground w-6 text-right">
+              {u.rank}
+            </span>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: u.paintColor + "25" }}
+            >
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: u.paintColor }}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <Link href={`/profile/${u.userId}`}>
+                <p className="font-medium text-sm truncate hover:underline">{u.username}</p>
+              </Link>
+              <p className="text-[10px] text-muted-foreground">
+                {u.territoryPercent}% de Barcelona
+              </p>
+            </div>
+            <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+              <MapPin className="w-3 h-3" />
+              {formatArea(u.territorySqMeters)}
+            </span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

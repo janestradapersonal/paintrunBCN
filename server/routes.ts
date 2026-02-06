@@ -353,6 +353,18 @@ export async function registerRoutes(
     return res.json({ count });
   });
 
+  app.get("/api/rankings/global-live", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const rankings = await storage.getGlobalLiveRankings(monthKey);
+    return res.json(rankings);
+  });
+
+  app.get("/api/rankings/global-live/territories", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const territories = await storage.getGlobalLiveTerritories(monthKey);
+    return res.json(territories);
+  });
+
   await seedDatabase();
 
   return httpServer;

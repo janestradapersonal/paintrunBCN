@@ -120,6 +120,36 @@ const SAMPLE_ACTIVITIES = [
     areaSqMeters: 98000,
     distanceMeters: 2100,
   },
+  {
+    name: "Raval Conquista",
+    coordinates: [
+      [2.1690, 41.3820], [2.1710, 41.3830], [2.1735, 41.3825],
+      [2.1740, 41.3808], [2.1730, 41.3795], [2.1710, 41.3790],
+      [2.1695, 41.3798], [2.1685, 41.3810], [2.1690, 41.3820],
+    ],
+    polygon: [
+      [2.1690, 41.3820], [2.1710, 41.3830], [2.1735, 41.3825],
+      [2.1740, 41.3808], [2.1730, 41.3795], [2.1710, 41.3790],
+      [2.1695, 41.3798], [2.1685, 41.3810], [2.1690, 41.3820],
+    ],
+    areaSqMeters: 72000,
+    distanceMeters: 1800,
+  },
+  {
+    name: "Eixample Takeover",
+    coordinates: [
+      [2.1560, 41.3915], [2.1590, 41.3935], [2.1630, 41.3940],
+      [2.1660, 41.3935], [2.1670, 41.3915], [2.1650, 41.3900],
+      [2.1610, 41.3898], [2.1575, 41.3905], [2.1560, 41.3915],
+    ],
+    polygon: [
+      [2.1560, 41.3915], [2.1590, 41.3935], [2.1630, 41.3940],
+      [2.1660, 41.3935], [2.1670, 41.3915], [2.1650, 41.3900],
+      [2.1610, 41.3898], [2.1575, 41.3905], [2.1560, 41.3915],
+    ],
+    areaSqMeters: 110000,
+    distanceMeters: 2400,
+  },
 ];
 
 export async function seedDatabase() {
@@ -152,29 +182,44 @@ export async function seedDatabase() {
     await storage.verifyUser("runner4@paintrunbcn.com");
     await storage.updatePaintColor(user4.id, "#D53F8C");
 
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
     for (const a of [SAMPLE_ACTIVITIES[0], SAMPLE_ACTIVITIES[1], SAMPLE_ACTIVITIES[3]]) {
       const neighborhood = detectNeighborhood(a.coordinates);
       await storage.createActivity(user1.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
+      await delay(50);
     }
     await storage.updateUserArea(user1.id);
 
     for (const a of [SAMPLE_ACTIVITIES[2], SAMPLE_ACTIVITIES[4]]) {
       const neighborhood = detectNeighborhood(a.coordinates);
       await storage.createActivity(user2.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
+      await delay(50);
     }
     await storage.updateUserArea(user2.id);
 
     for (const a of [SAMPLE_ACTIVITIES[5], SAMPLE_ACTIVITIES[6]]) {
       const neighborhood = detectNeighborhood(a.coordinates);
       await storage.createActivity(user3.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
+      await delay(50);
     }
     await storage.updateUserArea(user3.id);
 
-    for (const a of [SAMPLE_ACTIVITIES[0]]) {
+    {
+      const a = SAMPLE_ACTIVITIES[7];
       const neighborhood = detectNeighborhood(a.coordinates);
       await storage.createActivity(user4.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
+      await delay(50);
+    }
+
+    {
+      const a = SAMPLE_ACTIVITIES[8];
+      const neighborhood = detectNeighborhood(a.coordinates);
+      await storage.createActivity(user2.id, a.name, a.coordinates, a.polygon, a.areaSqMeters, a.distanceMeters, neighborhood, currentMonth);
+      await delay(50);
     }
     await storage.updateUserArea(user4.id);
+    await storage.updateUserArea(user2.id);
 
     const neighborhood0 = detectNeighborhood(SAMPLE_ACTIVITIES[0].coordinates);
     await storage.createActivity(user1.id, "Volta pel Raval (2a)", SAMPLE_ACTIVITIES[0].coordinates, SAMPLE_ACTIVITIES[0].polygon, SAMPLE_ACTIVITIES[0].areaSqMeters, SAMPLE_ACTIVITIES[0].distanceMeters, neighborhood0, currentMonth);
@@ -192,7 +237,7 @@ export async function seedDatabase() {
     await storage.followUser(user3.id, user1.id);
     await storage.followUser(user4.id, user1.id);
 
-    console.log("[seed] Database seeded successfully!");
+    console.log("[seed] Database seeded successfully with overlapping territories for GLOBAL LIVE demo!");
   } catch (error) {
     console.error("[seed] Error seeding database:", error);
   }

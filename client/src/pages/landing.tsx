@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { MapPin, Trophy, Upload, ArrowRight } from "lucide-react";
@@ -6,6 +7,49 @@ import { useAuth } from "@/lib/auth";
 
 export default function LandingPage() {
   const { user } = useAuth();
+  const [entered, setEntered] = useState(() => {
+    return sessionStorage.getItem("paintrunbcn_entered") === "true";
+  });
+
+  const handleEnter = () => {
+    sessionStorage.setItem("paintrunbcn_entered", "true");
+    setEntered(true);
+  };
+
+  if (!entered) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background">
+        <div className="absolute inset-0">
+          <BarcelonaMap
+            className="w-full h-full"
+            interactive={false}
+            showNeighborhoods={true}
+          />
+          <div className="absolute inset-0 bg-background/70" />
+        </div>
+        <div className="relative z-10 flex items-center justify-center w-full h-full px-4">
+          <div className="flex flex-col items-center text-center max-w-lg">
+            <span className="text-3xl md:text-5xl font-black tracking-tight mb-4" data-testid="text-splash-logo">
+              <span className="text-primary">paint</span>
+              <span className="text-foreground">run</span>
+              <span className="text-primary font-black">BCN</span>
+            </span>
+            <p className="text-muted-foreground text-sm md:text-base mb-8 leading-relaxed">
+              Pinta Barcelona corriendo. Sube tus rutas, conquista barrios y compite por el mapa.
+            </p>
+            <Button
+              size="lg"
+              className="gap-2 text-base px-8"
+              onClick={handleEnter}
+              data-testid="button-enter-site"
+            >
+              Entrar <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,7 +102,7 @@ export default function LandingPage() {
           </h1>
           <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl leading-relaxed">
             Sube tus actividades de Strava, cierra circuitos por la ciudad y conquista barrios enteros.
-            Compite con otros runners por pintar más metros cuadrados.
+            Compite con otros runners por pintar m&aacute;s metros cuadrados.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-10">
             <Link href={user ? "/dashboard" : "/register"}>
@@ -80,12 +124,12 @@ export default function LandingPage() {
           <FeatureCard
             icon={<Upload className="w-6 h-6" />}
             title="Sube tu GPX"
-            description="Exporta tu actividad desde Strava en formato GPX y súbela a paintrunBCN."
+            description="Exporta tu actividad desde Strava en formato GPX y s&uacute;bela a paintrunBCN."
           />
           <FeatureCard
             icon={<MapPin className="w-6 h-6" />}
             title="Pinta el mapa"
-            description="Cuando tu ruta cierra un circuito, el área interior se pinta de tu color."
+            description="Cuando tu ruta cierra un circuito, el &aacute;rea interior se pinta de tu color."
           />
           <FeatureCard
             icon={<Trophy className="w-6 h-6" />}

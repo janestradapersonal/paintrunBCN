@@ -7,6 +7,13 @@ import "leaflet/dist/leaflet.css";
 const BARCELONA_CENTER: [number, number] = [41.3874, 2.1686];
 const BARCELONA_ZOOM = 13;
 
+type TerritoryData = {
+  userId: string;
+  username: string;
+  paintColor: string;
+  polygons: number[][][];
+};
+
 interface BarcelonaMapProps {
   activities?: Activity[];
   showNeighborhoods?: boolean;
@@ -15,6 +22,8 @@ interface BarcelonaMapProps {
   userColor?: string;
   intensityMode?: boolean;
   highlightNeighborhood?: string | null;
+  territories?: TerritoryData[];
+  highlightUserId?: string | null;
 }
 
 function MapBounds() {
@@ -36,6 +45,10 @@ function getIntensityOpacity(count: number): number {
   return 0.75;
 }
 
+function convertCoordsToLatLngs(ring: any[]): [number, number][] {
+  return ring.map((c: any) => [c[1], c[0]] as [number, number]);
+}
+
 export default function BarcelonaMap({
   activities = [],
   showNeighborhoods = true,
@@ -44,6 +57,8 @@ export default function BarcelonaMap({
   userColor = "#FF6B35",
   intensityMode = false,
   highlightNeighborhood = null,
+  territories = [],
+  highlightUserId = null,
 }: BarcelonaMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
 
@@ -160,6 +175,46 @@ export default function BarcelonaMap({
             </div>
           );
         })}
+        {territories.map((territory) => {
+          const isHighlighted = highlightUserId === territory.userId;
+          const opacity = highlightUserId ? (isHighlighted ? 0.55 : 0.15) : 0.4;
+          const weight = isHighlighted ? 3 : 1.5;
+
+          return territory.polygons.map((polyCoords, polyIdx) => {
+            if (!polyCoords || !Array.isArray(polyCoords) || polyCoords.length === 0) return null;
+
+            const firstElement = polyCoords[0];
+            if (!firstElement || !Array.isArray(firstElement)) return null;
+
+            const isNestedRings = Array.isArray(firstElement[0]);
+
+            let positions: [number, number][] | [number, number][][];
+            if (isNestedRings) {
+              const rings = polyCoords as unknown as number[][][];
+              positions = rings
+                .filter((ring: any) => ring && ring.length >= 3)
+                .map((ring: any) => convertCoordsToLatLngs(ring));
+            } else {
+              const ring = polyCoords as unknown as number[][];
+              if (ring.length < 3) return null;
+              positions = convertCoordsToLatLngs(ring);
+            }
+
+            return (
+              <Polygon
+                key={`territory-${territory.userId}-${polyIdx}`}
+                positions={positions}
+                pathOptions={{
+                  color: territory.paintColor,
+                  fillColor: territory.paintColor,
+                  fillOpacity: opacity,
+                  weight,
+                  opacity: highlightUserId ? (isHighlighted ? 0.9 : 0.3) : 0.7,
+                }}
+              />
+            );
+          });
+        })}
       </MapContainer>
       {intensityMode && activities.some(a => a.polygon) && (
         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm rounded-md p-3 text-xs z-[1000]">
@@ -178,6 +233,24 @@ export default function BarcelonaMap({
               ))}
             </div>
             <span className="text-muted-foreground">1x - 4x+</span>
+          </div>
+        </div>
+      )}
+      {territories.length > 0 && (
+        <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm rounded-md p-3 text-xs z-[1000]" data-testid="territory-legend">
+          <p className="font-semibold mb-1.5 text-foreground">Territorios</p>
+          <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
+            {territories.map((t) => (
+              <div key={t.userId} className="flex items-center gap-1.5">
+                <div
+                  className="w-3 h-3 rounded-sm flex-shrink-0"
+                  style={{ backgroundColor: t.paintColor }}
+                />
+                <span className={`truncate ${highlightUserId === t.userId ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                  {t.username}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
