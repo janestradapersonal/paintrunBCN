@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { queryClient } from "@/lib/queryClient";
 
 const PRESET_COLORS = [
   "#FF6B35", "#E53E3E", "#DD6B20", "#D69E2E",
