@@ -175,15 +175,28 @@ export default function ProfilePage() {
 
   const [stravaSyncing, setStravaSyncing] = useState(false);
 
+  const [stravaConnecting, setStravaConnecting] = useState(false);
+
   const handleStravaConnect = async () => {
+    setStravaConnecting(true);
     try {
       const res = await fetch("/api/strava/auth-url", { credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Error de servidor" }));
+        toast({ title: "Error", description: err.message || "No se pudo conectar con Strava", variant: "destructive" });
+        setStravaConnecting(false);
+        return;
+      }
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
+      } else {
+        toast({ title: "Error", description: "No se recibió URL de autorización de Strava", variant: "destructive" });
+        setStravaConnecting(false);
       }
     } catch {
       toast({ title: "Error", description: "No se pudo iniciar la conexión con Strava", variant: "destructive" });
+      setStravaConnecting(false);
     }
   };
 
@@ -427,13 +440,18 @@ export default function ProfilePage() {
                     ) : (
                       <button
                         onClick={handleStravaConnect}
-                        className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors"
+                        disabled={stravaConnecting}
+                        className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors disabled:opacity-50"
                         data-testid="button-strava-connect"
                       >
-                        <SiStrava className="w-5 h-5 text-[#FC4C02]" />
+                        {stravaConnecting ? (
+                          <Loader2 className="w-5 h-5 text-[#FC4C02] animate-spin" />
+                        ) : (
+                          <SiStrava className="w-5 h-5 text-[#FC4C02]" />
+                        )}
                         <div className="flex flex-col items-start">
                           <span className="text-xs font-medium">Conectar Strava</span>
-                          <span className="text-[10px] text-muted-foreground">Importar actividades</span>
+                          <span className="text-[10px] text-muted-foreground">Sincronización automática</span>
                         </div>
                       </button>
                     )}
@@ -445,7 +463,7 @@ export default function ProfilePage() {
                       <SiGarmin className="w-5 h-5 text-[#007CC3]" />
                       <div className="flex flex-col items-start">
                         <span className="text-xs font-medium">Conectar Garmin</span>
-                        <span className="text-[10px] text-muted-foreground">Importar actividades</span>
+                        <span className="text-[10px] text-muted-foreground">Sincronización automática</span>
                       </div>
                     </button>
                   </div>

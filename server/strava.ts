@@ -126,8 +126,11 @@ async function processStravaActivity(athleteId: number, activityId: number): Pro
 
 export function registerStravaRoutes(app: Express): void {
   app.get("/api/strava/auth-url", (req: Request, res: Response) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Debes iniciar sesión primero" });
+    }
     if (!STRAVA_CLIENT_ID) {
-      return res.status(500).json({ message: "Strava no configurado" });
+      return res.status(500).json({ message: "Strava no configurado en el servidor" });
     }
     const baseUrl = getBaseUrl(req);
     const redirectUri = `${baseUrl}/api/strava/callback`;
@@ -137,14 +140,19 @@ export function registerStravaRoutes(app: Express): void {
 
   app.get("/api/strava/callback", async (req: Request, res: Response) => {
     const code = req.query.code as string;
+    const error = req.query.error as string;
     const userId = req.session?.userId;
 
     if (!userId) {
       return res.redirect("/?strava=error&reason=not_logged_in");
     }
 
+    if (error === "access_denied") {
+      return res.redirect(`/profile/${userId}?strava=denied`);
+    }
+
     if (!code) {
-      return res.redirect("/?strava=error&reason=no_code");
+      return res.redirect(`/profile/${userId}?strava=error&reason=no_code`);
     }
 
     try {
@@ -183,7 +191,7 @@ export function registerStravaRoutes(app: Express): void {
       return res.redirect(`/profile/${userId}?strava=connected`);
     } catch (error: any) {
       console.error("[Strava] Callback error:", error.message);
-      return res.redirect("/?strava=error&reason=server_error");
+      return res.redirect(`/profile/${userId}?strava=error&reason=server_error`);
     }
   });
 
