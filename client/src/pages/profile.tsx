@@ -262,7 +262,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <div className="h-[calc(100vh-64px)] flex flex-col lg:flex-row overflow-hidden">
         <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto max-h-[40vh] lg:max-h-none shrink-0">
           <div className="flex flex-col items-center text-center gap-3">
             <Avatar className="w-16 h-16">
@@ -521,7 +521,7 @@ export default function ProfilePage() {
           </div>
         </aside>
 
-        <main className="flex-1 relative min-h-[50vh] lg:min-h-0">
+        <main className="flex-1 relative min-h-0">
           <BarcelonaMap
             activities={userActivities}
             className="w-full h-full"
