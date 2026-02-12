@@ -23,9 +23,11 @@ import {
   Loader2,
   Palette,
   Check,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const PRESET_COLORS = [
   "#FF6B35", "#E53E3E", "#DD6B20", "#D69E2E",
@@ -64,6 +66,10 @@ function formatMonth(monthKey: string): string {
   return `${months[parseInt(m) - 1]} ${y}`;
 }
 
+function getMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -86,6 +92,7 @@ export default function ProfilePage() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [savingColor, setSavingColor] = useState(false);
+  const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -98,7 +105,12 @@ export default function ProfilePage() {
   });
 
   const { data: userActivities = [], isLoading: activitiesLoading } = useQuery<Activity[]>({
-    queryKey: ["/api/users", userId, "activities"],
+    queryKey: ["/api/users", userId, "activities", "month", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/users/${userId}/activities?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading activities");
+      return res.json();
+    },
     enabled: !!userId,
   });
 
@@ -199,30 +211,54 @@ export default function ProfilePage() {
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
           </div>
-          {user && !isOwnProfile && (
-            <Button
-              variant={profile.isFollowing ? "secondary" : "default"}
-              size="sm"
-              className="gap-1.5"
-              onClick={handleFollow}
-              disabled={followPending}
-              data-testid="button-follow-toggle"
-            >
-              {followPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : profile.isFollowing ? (
-                <UserMinus className="w-4 h-4" />
-              ) : (
-                <UserPlus className="w-4 h-4" />
-              )}
-              {profile.isFollowing ? "Dejar de seguir" : "Seguir"}
-            </Button>
-          )}
-          {isOwnProfile && (
-            <Badge variant="secondary" className="gap-1.5">
-              Tu perfil
-            </Badge>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1" data-testid="month-selector-profile">
+              <Button variant="ghost" size="icon" onClick={() => {
+                const [y, m] = monthKey.split("-").map(Number);
+                const prev = new Date(y, m - 2, 1);
+                setMonthKey(getMonthKey(prev));
+              }} data-testid="button-month-prev">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="flex items-center gap-1.5 min-w-[90px] justify-center">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium">{formatMonth(monthKey)}</span>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => {
+                const [y, m] = monthKey.split("-").map(Number);
+                const next = new Date(y, m, 1);
+                const currentMonth = getMonthKey(new Date());
+                const nextKey = getMonthKey(next);
+                if (nextKey <= currentMonth) setMonthKey(nextKey);
+              }} disabled={monthKey >= getMonthKey(new Date())} data-testid="button-month-next">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+            {user && !isOwnProfile && (
+              <Button
+                variant={profile.isFollowing ? "secondary" : "default"}
+                size="sm"
+                className="gap-1.5"
+                onClick={handleFollow}
+                disabled={followPending}
+                data-testid="button-follow-toggle"
+              >
+                {followPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : profile.isFollowing ? (
+                  <UserMinus className="w-4 h-4" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
+                {profile.isFollowing ? "Dejar de seguir" : "Seguir"}
+              </Button>
+            )}
+            {isOwnProfile && (
+              <Badge variant="secondary" className="gap-1.5">
+                Tu perfil
+              </Badge>
+            )}
+          </div>
         </div>
       </header>
 
@@ -446,7 +482,7 @@ export default function ProfilePage() {
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
               <ActivityIcon className="w-4 h-4" />
-              Actividades ({userActivities.length})
+              Actividades {formatMonth(monthKey)} ({userActivities.length})
             </h3>
             {activitiesLoading ? (
               <div className="space-y-2">
