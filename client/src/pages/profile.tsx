@@ -25,6 +25,9 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Link2,
+  Unlink,
+  RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
@@ -157,6 +160,57 @@ export default function ProfilePage() {
     }
   };
 
+  const isOwnProfile = user?.id === userId;
+
+  const { data: stravaStatus } = useQuery<{ connected: boolean; athleteId: number | null }>({
+    queryKey: ["/api/strava/status"],
+    queryFn: async () => {
+      const res = await fetch("/api/strava/status", { credentials: "include" });
+      if (!res.ok) return { connected: false, athleteId: null };
+      return res.json();
+    },
+    enabled: isOwnProfile,
+  });
+
+  const [stravaSyncing, setStravaSyncing] = useState(false);
+
+  const handleStravaConnect = async () => {
+    try {
+      const res = await fetch("/api/strava/auth-url", { credentials: "include" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      toast({ title: "Error", description: "No se pudo iniciar la conexión con Strava", variant: "destructive" });
+    }
+  };
+
+  const handleStravaDisconnect = async () => {
+    try {
+      await apiRequest("POST", "/api/strava/disconnect");
+      qc.invalidateQueries({ queryKey: ["/api/strava/status"] });
+      toast({ title: "Strava desconectado", description: "Tu cuenta de Strava ha sido desvinculada." });
+    } catch {
+      toast({ title: "Error", description: "No se pudo desconectar Strava", variant: "destructive" });
+    }
+  };
+
+  const handleStravaSync = async () => {
+    setStravaSyncing(true);
+    try {
+      const res = await apiRequest("POST", "/api/strava/sync");
+      const data = await res.json();
+      toast({ title: "Sincronización completada", description: data.message });
+      qc.invalidateQueries({ queryKey: ["/api/users", userId, "activities"] });
+      qc.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+    } catch {
+      toast({ title: "Error", description: "No se pudo sincronizar con Strava", variant: "destructive" });
+    } finally {
+      setStravaSyncing(false);
+    }
+  };
+
   const handleColorChange = async (color: string) => {
     setSavingColor(true);
     try {
@@ -170,8 +224,6 @@ export default function ProfilePage() {
       setSavingColor(false);
     }
   };
-
-  const isOwnProfile = user?.id === userId;
 
   if (profileLoading) {
     return (
@@ -328,6 +380,62 @@ export default function ProfilePage() {
                   </Card>
                 )}
               </div>
+            )}
+            {isOwnProfile && (
+              <Card className="w-full">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/34/Strava_logo_%282024%29.svg" alt="Strava" className="h-4 w-auto opacity-80" />
+                    <span className="text-xs font-semibold">Conexiones</span>
+                  </div>
+                  {stravaStatus?.connected ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Check className="w-3 h-3" /> Strava conectado
+                        </Badge>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs gap-1.5 flex-1"
+                          onClick={handleStravaSync}
+                          disabled={stravaSyncing}
+                          data-testid="button-strava-sync"
+                        >
+                          {stravaSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                          Sincronizar
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs gap-1.5"
+                          onClick={handleStravaDisconnect}
+                          data-testid="button-strava-disconnect"
+                        >
+                          <Unlink className="w-3 h-3" />
+                          Desconectar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs gap-1.5"
+                      onClick={handleStravaConnect}
+                      data-testid="button-strava-connect"
+                    >
+                      <Link2 className="w-3 h-3" />
+                      Conectar Strava
+                    </Button>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
+                    Conecta tu cuenta para importar actividades automáticamente.
+                  </p>
+                </CardContent>
+              </Card>
             )}
             {!isOwnProfile && (
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

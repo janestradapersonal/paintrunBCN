@@ -54,6 +54,16 @@ export const follows = pgTable("follows", {
   unique().on(table.followerId, table.followingId),
 ]);
 
+export const stravaTokens = pgTable("strava_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  stravaAthleteId: integer("strava_athlete_id").notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: integer("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   username: true,
@@ -82,3 +92,4 @@ export type Activity = typeof activities.$inferSelect;
 export type VerificationCode = typeof verificationCodes.$inferSelect;
 export type MonthlyTitle = typeof monthlyTitles.$inferSelect;
 export type Follow = typeof follows.$inferSelect;
+export type StravaToken = typeof stravaTokens.$inferSelect;

@@ -10,6 +10,7 @@ import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
 import multer from "multer";
 import sgMail from "@sendgrid/mail";
+import { registerStravaRoutes } from "./strava";
 
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -401,6 +402,8 @@ export async function registerRoutes(
     const territories = await storage.getGlobalLiveTerritories(monthKey);
     return res.json(territories);
   });
+
+  registerStravaRoutes(app);
 
   await seedDatabase();
 

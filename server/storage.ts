@@ -1,7 +1,7 @@
 import { eq, desc, sql, and, or, ilike, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { users, activities, verificationCodes, monthlyTitles, follows, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow } from "@shared/schema";
+import { users, activities, verificationCodes, monthlyTitles, follows, stravaTokens, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow, type StravaToken } from "@shared/schema";
 import * as turf from "@turf/turf";
 
 const pool = new pg.Pool({
@@ -52,6 +52,11 @@ export interface IStorage {
 
   getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
   getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
+
+  getStravaToken(userId: string): Promise<StravaToken | undefined>;
+  getStravaTokenByAthleteId(athleteId: number): Promise<StravaToken | undefined>;
+  upsertStravaToken(userId: string, athleteId: number, accessToken: string, refreshToken: string, expiresAt: number): Promise<StravaToken>;
+  deleteStravaToken(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -451,16 +456,15 @@ export class DatabaseStorage implements IStorage {
     const territories = this.computeTerritories(monthActivities, userMap);
 
     const rankings: { userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[] = [];
-    const terrEntries = Array.from(territories.entries());
-    for (const [userId, data] of terrEntries) {
-      const userInfo = userMap.get(userId);
-      if (!userInfo || data.totalArea <= 0) continue;
+    for (const [userId, userInfo] of Array.from(userMap.entries())) {
+      const data = territories.get(userId);
+      const totalArea = data?.totalArea || 0;
       rankings.push({
         userId,
         username: userInfo.username,
         paintColor: userInfo.paintColor,
-        territorySqMeters: Math.round(data.totalArea),
-        territoryPercent: parseFloat(((data.totalArea / BARCELONA_AREA_SQM) * 100).toFixed(4)),
+        territorySqMeters: Math.round(totalArea),
+        territoryPercent: parseFloat(((totalArea / BARCELONA_AREA_SQM) * 100).toFixed(4)),
         rank: 0,
       });
     }
@@ -502,6 +506,35 @@ export class DatabaseStorage implements IStorage {
     }
 
     return result;
+  }
+
+  async getStravaToken(userId: string): Promise<StravaToken | undefined> {
+    const [token] = await db.select().from(stravaTokens).where(eq(stravaTokens.userId, userId));
+    return token;
+  }
+
+  async getStravaTokenByAthleteId(athleteId: number): Promise<StravaToken | undefined> {
+    const [token] = await db.select().from(stravaTokens).where(eq(stravaTokens.stravaAthleteId, athleteId));
+    return token;
+  }
+
+  async upsertStravaToken(userId: string, athleteId: number, accessToken: string, refreshToken: string, expiresAt: number): Promise<StravaToken> {
+    const existing = await this.getStravaToken(userId);
+    if (existing) {
+      const [updated] = await db.update(stravaTokens)
+        .set({ stravaAthleteId: athleteId, accessToken, refreshToken, expiresAt })
+        .where(eq(stravaTokens.userId, userId))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(stravaTokens)
+      .values({ userId, stravaAthleteId: athleteId, accessToken, refreshToken, expiresAt })
+      .returning();
+    return created;
+  }
+
+  async deleteStravaToken(userId: string): Promise<void> {
+    await db.delete(stravaTokens).where(eq(stravaTokens.userId, userId));
   }
 }
 
