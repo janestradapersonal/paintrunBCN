@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
+import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 const PRESET_COLORS = [
   "#FF6B35", "#E53E3E", "#DD6B20", "#D69E2E",
@@ -93,6 +94,7 @@ export default function ProfilePage() {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [savingColor, setSavingColor] = useState(false);
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
+  const [panelMode, setPanelMode] = useState<PanelMode>("list");
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -262,8 +264,8 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-64px)] overflow-y-auto lg:overflow-hidden">
-        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 lg:overflow-y-auto shrink-0">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] overflow-hidden">
+        <aside className={`lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).aside}`}>
           <div className="flex flex-col items-center text-center gap-3">
             <Avatar className="w-16 h-16">
               <AvatarFallback className="text-2xl bg-primary/10 text-primary">
@@ -521,7 +523,9 @@ export default function ProfilePage() {
           </div>
         </aside>
 
-        <main className="relative h-[60vh] lg:h-auto lg:flex-1 shrink-0">
+        <MobilePanelToggle mode={panelMode} onToggle={setPanelMode} />
+
+        <main className={`relative lg:flex-1 shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).main}`}>
           <BarcelonaMap
             activities={userActivities}
             className="w-full h-full"

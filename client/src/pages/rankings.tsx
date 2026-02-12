@@ -11,6 +11,7 @@ import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
 import UserSearch from "@/components/user-search";
 import { useState, useMemo } from "react";
+import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 type RankedUser = {
   id?: string;
@@ -106,6 +107,7 @@ export default function RankingsPage() {
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null);
+  const [panelMode, setPanelMode] = useState<PanelMode>("list");
 
   const { data: globalRankings = [], isLoading: globalLoading } = useQuery<RankedUser[]>({
     queryKey: ["/api/rankings", "month", monthKey],
@@ -260,8 +262,8 @@ export default function RankingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-120px)] overflow-y-auto lg:overflow-hidden">
-        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 lg:overflow-y-auto shrink-0">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] overflow-hidden">
+        <aside className={`lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 overflow-y-auto shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).aside}`}>
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -298,7 +300,9 @@ export default function RankingsPage() {
           )}
         </aside>
 
-        <main className="relative h-[60vh] lg:h-auto lg:flex-1 shrink-0">
+        <MobilePanelToggle mode={panelMode} onToggle={setPanelMode} />
+
+        <main className={`relative lg:flex-1 shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).main}`}>
           {tab === "global-live" ? (
             <BarcelonaMap
               className="w-full h-full"

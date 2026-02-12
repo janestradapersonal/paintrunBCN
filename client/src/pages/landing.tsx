@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import UserSearch from "@/components/user-search";
+import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 function formatArea(sqm: number): string {
   if (sqm >= 1_000_000) return `${(sqm / 1_000_000).toFixed(2)} km²`;
@@ -110,6 +111,7 @@ function DashboardView() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [panelMode, setPanelMode] = useState<PanelMode>("list");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -190,8 +192,8 @@ function DashboardView() {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-        <aside className="lg:w-80 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 lg:overflow-y-auto shrink-0">
+      <div className="flex-1 flex flex-col lg:flex-row h-[calc(100vh-64px)] lg:h-auto overflow-hidden">
+        <aside className={`lg:w-80 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).aside}`}>
           <div className="grid grid-cols-2 gap-3">
             <Card>
               <CardContent className="p-4 flex flex-col items-center text-center">
@@ -306,7 +308,9 @@ function DashboardView() {
           </div>
         </aside>
 
-        <main className="relative h-[60vh] lg:h-auto lg:flex-1 shrink-0">
+        <MobilePanelToggle mode={panelMode} onToggle={setPanelMode} />
+
+        <main className={`relative lg:flex-1 shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).main}`}>
           <BarcelonaMap
             activities={activities}
             className="w-full h-full"
