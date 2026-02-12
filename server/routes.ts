@@ -9,6 +9,41 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import pg from "pg";
 import multer from "multer";
+import sgMail from "@sendgrid/mail";
+
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
+
+async function sendVerificationEmail(email: string, code: string): Promise<boolean> {
+  if (!process.env.SENDGRID_API_KEY) {
+    console.log(`[paintrunBCN] SendGrid not configured. Verification code for ${email}: ${code}`);
+    return false;
+  }
+  try {
+    await sgMail.send({
+      to: email,
+      from: "noreply@paintrunbcn.com",
+      subject: "Tu código de verificación - paintrunBCN",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #1a1a2e; color: #ffffff; border-radius: 12px;">
+          <h1 style="color: #22b8cf; margin: 0 0 8px 0; font-size: 24px;">paintrunBCN</h1>
+          <p style="color: #aaaaaa; margin: 0 0 24px 0; font-size: 14px;">Pinta Barcelona corriendo</p>
+          <p style="margin: 0 0 16px 0;">Tu código de verificación es:</p>
+          <div style="background: #16213e; border: 2px solid #22b8cf; border-radius: 8px; padding: 20px; text-align: center; margin: 0 0 24px 0;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #22b8cf;">${code}</span>
+          </div>
+          <p style="color: #aaaaaa; font-size: 13px; margin: 0;">Este código expira en 15 minutos. Si no has solicitado este código, ignora este mensaje.</p>
+        </div>
+      `,
+    });
+    console.log(`[paintrunBCN] Verification email sent to ${email}`);
+    return true;
+  } catch (error: any) {
+    console.error(`[paintrunBCN] Failed to send email to ${email}:`, error?.response?.body || error.message);
+    return false;
+  }
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -75,11 +110,13 @@ export async function registerRoutes(
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
       await storage.createVerificationCode(email, code, expiresAt);
 
-      console.log(`[paintrunBCN] Verification code for ${email}: ${code}`);
+      const emailSent = await sendVerificationEmail(email, code);
 
       return res.json({ 
-        message: "Cuenta creada. Verifica tu email.", 
-        verificationCode: process.env.NODE_ENV !== "production" ? code : undefined 
+        message: emailSent 
+          ? "Cuenta creada. Revisa tu correo para el código de verificación." 
+          : "Cuenta creada. Verifica tu email.",
+        verificationCode: !emailSent ? code : undefined
       });
     } catch (error: any) {
       console.error("Register error:", error);
