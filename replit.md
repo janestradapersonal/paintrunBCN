@@ -26,8 +26,9 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - **Follow system**: Follow/unfollow users, see followers and following lists
 - **Participant counts**: Rankings show total number of participants
 - **Custom paint color**: Users can choose their paint color from presets or a custom color picker in their profile
+- **Strava integration**: OAuth2 connection, manual sync, and webhook auto-import of activities
 - **GLOBAL LIVE**: Territorial control mode - last-write-wins, newer activities paint over older ones
-  - Rankings show current territory owned (m² and % of Barcelona)
+  - Rankings show ALL participants (including those with 0 territory)
   - Multi-user territory map with each user's paint color
   - Territory computation uses turf.js polygon difference operations
 - View any ranked user's painted areas on the map
@@ -64,7 +65,14 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `GET /api/rankings/neighborhoods?month=YYYY-MM` - Neighborhoods with activity
 - `GET /api/rankings/neighborhoods/:name?month=YYYY-MM` - Per-neighborhood leaderboard
 - `GET /api/rankings/neighborhoods/:name/participant-count?month=YYYY-MM` - Participants in a neighborhood
-- `GET /api/rankings/global-live?month=YYYY-MM` - GLOBAL LIVE territorial rankings (last-write-wins)
+- `GET /api/rankings/global-live?month=YYYY-MM` - GLOBAL LIVE territorial rankings (last-write-wins, shows ALL participants)
+- `GET /api/strava/auth-url` - Get Strava OAuth authorization URL
+- `GET /api/strava/callback` - Strava OAuth callback (redirects to profile)
+- `GET /api/strava/status` - Check if current user has Strava connected
+- `POST /api/strava/disconnect` - Disconnect Strava account
+- `POST /api/strava/sync` - Manually sync current month's Strava activities
+- `GET /api/strava/webhook` - Strava webhook validation endpoint
+- `POST /api/strava/webhook` - Strava webhook event receiver (auto-imports new activities)
 - `GET /api/rankings/global-live/territories?month=YYYY-MM` - Territory polygons for map visualization
 
 ## Database Schema
@@ -73,6 +81,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - `activities` - id, userId, name, coordinates (jsonb), polygon (jsonb), areaSqMeters, distanceMeters, neighborhoodName, monthKey, uploadedAt
 - `monthly_titles` - id, userId, monthKey, titleType (global/neighborhood), neighborhoodName, rank, areaSqMeters
 - `follows` - id, followerId, followingId, createdAt (unique constraint on follower+following)
+- `strava_tokens` - id, userId (unique), stravaAthleteId, accessToken, refreshToken, expiresAt, createdAt
 - `session` - auto-managed by connect-pg-simple
 
 ## Monthly System
