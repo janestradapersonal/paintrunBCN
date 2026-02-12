@@ -438,14 +438,14 @@ export default function ProfilePage() {
                       </button>
                     )}
                     <button
-                      onClick={() => toast({ title: "Garmin", description: "La conexión con Garmin estará disponible próximamente." })}
-                      className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors opacity-60"
+                      onClick={() => toast({ title: "Garmin Connect", description: "La conexión con Garmin estará disponible próximamente." })}
+                      className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors"
                       data-testid="button-garmin-connect"
                     >
                       <SiGarmin className="w-5 h-5 text-[#007CC3]" />
                       <div className="flex flex-col items-start">
                         <span className="text-xs font-medium">Conectar Garmin</span>
-                        <span className="text-[10px] text-muted-foreground">Próximamente</span>
+                        <span className="text-[10px] text-muted-foreground">Importar actividades</span>
                       </div>
                     </button>
                   </div>
