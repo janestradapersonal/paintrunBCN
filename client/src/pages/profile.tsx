@@ -25,10 +25,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Link2,
   Unlink,
   RefreshCw,
+  Link as LinkIcon,
 } from "lucide-react";
+import { SiStrava, SiGarmin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
@@ -384,56 +385,70 @@ export default function ProfilePage() {
             {isOwnProfile && (
               <Card className="w-full">
                 <CardContent className="p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/34/Strava_logo_%282024%29.svg" alt="Strava" className="h-4 w-auto opacity-80" />
+                  <div className="flex items-center gap-2 mb-3">
+                    <LinkIcon className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-semibold">Conexiones</span>
                   </div>
-                  {stravaStatus?.connected ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-[10px] gap-1">
-                          <Check className="w-3 h-3" /> Strava conectado
-                        </Badge>
+                  <div className="space-y-2">
+                    {stravaStatus?.connected ? (
+                      <div className="rounded-md border border-border p-2.5 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <SiStrava className="w-4 h-4 text-[#FC4C02]" />
+                            <span className="text-xs font-medium">Strava</span>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px] gap-1" data-testid="badge-strava-connected">
+                            <Check className="w-3 h-3" /> Conectado
+                          </Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs gap-1.5 flex-1"
+                            onClick={handleStravaSync}
+                            disabled={stravaSyncing}
+                            data-testid="button-strava-sync"
+                          >
+                            {stravaSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            Sincronizar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs gap-1.5"
+                            onClick={handleStravaDisconnect}
+                            data-testid="button-strava-disconnect"
+                          >
+                            <Unlink className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs gap-1.5 flex-1"
-                          onClick={handleStravaSync}
-                          disabled={stravaSyncing}
-                          data-testid="button-strava-sync"
-                        >
-                          {stravaSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                          Sincronizar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs gap-1.5"
-                          onClick={handleStravaDisconnect}
-                          data-testid="button-strava-disconnect"
-                        >
-                          <Unlink className="w-3 h-3" />
-                          Desconectar
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full text-xs gap-1.5"
-                      onClick={handleStravaConnect}
-                      data-testid="button-strava-connect"
+                    ) : (
+                      <button
+                        onClick={handleStravaConnect}
+                        className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors"
+                        data-testid="button-strava-connect"
+                      >
+                        <SiStrava className="w-5 h-5 text-[#FC4C02]" />
+                        <div className="flex flex-col items-start">
+                          <span className="text-xs font-medium">Conectar Strava</span>
+                          <span className="text-[10px] text-muted-foreground">Importar actividades</span>
+                        </div>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => toast({ title: "Garmin", description: "La conexión con Garmin estará disponible próximamente." })}
+                      className="w-full flex items-center gap-3 rounded-md border border-border p-2.5 hover-elevate active-elevate-2 transition-colors opacity-60"
+                      data-testid="button-garmin-connect"
                     >
-                      <Link2 className="w-3 h-3" />
-                      Conectar Strava
-                    </Button>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed">
-                    Conecta tu cuenta para importar actividades automáticamente.
-                  </p>
+                      <SiGarmin className="w-5 h-5 text-[#007CC3]" />
+                      <div className="flex flex-col items-start">
+                        <span className="text-xs font-medium">Conectar Garmin</span>
+                        <span className="text-[10px] text-muted-foreground">Próximamente</span>
+                      </div>
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             )}
