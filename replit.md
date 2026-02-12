@@ -83,7 +83,7 @@ paintrunBCN is a web app inspired by Paper.io where runners "paint" Barcelona by
 - Titles are stored in `monthly_titles` when a user wins a ranking
 
 ## Dev Notes
-- Verification codes are logged to console and shown in a toast notification (dev mode only). No email delivery service is configured - to add email delivery, set up Resend or SendGrid integration and update server/routes.ts to send the code via email instead of returning it.
+- Verification codes are sent via SendGrid email (from janestrada888@gmail.com). If SendGrid is not configured or fails, the code falls back to console log and toast notification.
 - Seed data creates 4 sample users with activities in current month
 - MaratonistaBCN has duplicate Raval activity to demo intensity and neighborhood overlap counting
 - Sample titles from previous month for 3 users
