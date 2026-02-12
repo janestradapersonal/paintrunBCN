@@ -227,7 +227,7 @@ export default function ProfilePage() {
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto max-h-[50vh] lg:max-h-none">
+        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto max-h-[40vh] lg:max-h-none shrink-0">
           <div className="flex flex-col items-center text-center gap-3">
             <Avatar className="w-16 h-16">
               <AvatarFallback className="text-2xl bg-primary/10 text-primary">
