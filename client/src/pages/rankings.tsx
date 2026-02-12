@@ -260,8 +260,8 @@ export default function RankingsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] overflow-hidden">
-        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 overflow-y-auto max-h-[40vh] lg:max-h-none shrink-0">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-120px)] overflow-y-auto lg:overflow-hidden">
+        <aside className="lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 lg:overflow-y-auto shrink-0">
           {isLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -298,7 +298,7 @@ export default function RankingsPage() {
           )}
         </aside>
 
-        <main className="flex-1 relative min-h-0">
+        <main className="relative h-[60vh] lg:h-auto lg:flex-1 shrink-0">
           {tab === "global-live" ? (
             <BarcelonaMap
               className="w-full h-full"
