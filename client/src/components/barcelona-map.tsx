@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, GeoJSON, Polygon, Polyline, useMap } from "react-leaflet";
 import type { FeatureCollection } from "geojson";
 import type { Activity } from "@shared/schema";
@@ -61,6 +61,74 @@ export default function BarcelonaMap({
   highlightUserId = null,
 }: BarcelonaMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  function MapResizeHandler({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
+    const map = useMap();
+    useEffect(() => {
+      const el = containerRef?.current;
+      if (!el) return;
+
+      let lastWidth = el.clientWidth;
+      let lastHeight = el.clientHeight;
+
+      // Debounced resize caller
+      let timer: any;
+      const doResize = () => {
+        try {
+          map.invalidateSize();
+        } catch (e) {
+          // ignore
+        }
+      };
+      const debounced = () => {
+        clearTimeout(timer);
+        timer = setTimeout(doResize, 150);
+      };
+
+      // ResizeObserver to detect container size changes (no style changes here)
+      const ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const cr = entry.contentRect;
+          const w = Math.round(cr.width);
+          const h = Math.round(cr.height);
+          // only call when size actually changed to avoid loops
+          if (w !== lastWidth || h !== lastHeight) {
+            lastWidth = w;
+            lastHeight = h;
+            doResize();
+          }
+        }
+      });
+      ro.observe(el);
+
+      // IntersectionObserver to call invalidate when map becomes visible
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) debounced();
+        }
+      }, { threshold: 0.1 });
+      io.observe(el);
+
+      // window events
+      window.addEventListener("resize", debounced);
+      window.addEventListener("orientationchange", debounced);
+
+      // initial call after mount
+      const initialTimer = setTimeout(doResize, 200);
+
+      return () => {
+        clearTimeout(initialTimer);
+        clearTimeout(timer);
+        ro.disconnect();
+        io.disconnect();
+        window.removeEventListener("resize", debounced);
+        window.removeEventListener("orientationchange", debounced);
+      };
+    }, [containerRef, map]);
+
+    return null;
+  }
 
   useEffect(() => {
     fetch("/data/barris.geojson")
@@ -103,7 +171,7 @@ export default function BarcelonaMap({
   const renderedPolygonKeys = new Set<string>();
 
   return (
-    <div className={`relative ${className}`} data-testid="map-container" style={!interactive ? { pointerEvents: "none" } : undefined}>
+    <div ref={containerRef} className={`relative map-explicit-height ${className}`} data-testid="map-container" style={!interactive ? { pointerEvents: "none" } : undefined}>
       <MapContainer
         center={BARCELONA_CENTER}
         zoom={BARCELONA_ZOOM}
@@ -117,6 +185,7 @@ export default function BarcelonaMap({
         touchZoom={interactive}
         style={{ background: "hsl(0, 0%, 8%)" }}
       >
+        <MapResizeHandler containerRef={containerRef} />
         <MapBounds />
         <TileLayer
           attribution='&copy; <a href="https://carto.com">CARTO</a>'

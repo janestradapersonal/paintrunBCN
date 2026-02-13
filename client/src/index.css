@@ -305,3 +305,17 @@
 .leaflet-container {
   font-family: Inter, sans-serif !important;
 }
+
+/* Map container explicit height on small screens.
+   Use calc(100vh - var(--app-header-height)) if the layout provides --app-header-height,
+   otherwise fall back to 60vh. Avoid height:100% when parent has no explicit height. */
+.map-explicit-height {
+  height: 100%;
+}
+
+@media (max-width: 640px) {
+  .map-explicit-height {
+    height: calc(100vh - var(--app-header-height, 0px));
+    min-height: 60vh;
+  }
+}
