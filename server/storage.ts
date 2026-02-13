@@ -49,6 +49,7 @@ export interface IStorage {
 
   getMonthlyGlobalParticipantCount(monthKey: string): Promise<number>;
   getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number>;
+  getFollowerRankings(): Promise<{ id: string; username: string; followerCount: number }[]>;
 
   getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
   getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
@@ -147,23 +148,22 @@ export class DatabaseStorage implements IStorage {
     const allUsers = await db
       .select()
       .from(users)
-      .where(eq(users.verified, true))
       .orderBy(desc(users.totalAreaSqMeters));
     return allUsers.map((u, i) => ({ ...u, rank: i + 1 }));
   }
 
   async getMonthlyGlobalRankings(monthKey: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]> {
+    // Include all users (even those without activities in the month) using LEFT JOIN.
     const results = await db
       .select({
-        userId: activities.userId,
+        userId: users.id,
         username: users.username,
         totalAreaSqMeters: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
       })
-      .from(activities)
-      .innerJoin(users, eq(activities.userId, users.id))
-      .where(eq(activities.monthKey, monthKey))
-      .groupBy(activities.userId, users.username)
-      .orderBy(desc(sql`SUM(${activities.areaSqMeters})`));
+      .from(users)
+      .leftJoin(activities, and(eq(activities.userId, users.id), eq(activities.monthKey, monthKey)))
+      .groupBy(users.id, users.username)
+      .orderBy(desc(sql`COALESCE(SUM(${activities.areaSqMeters}), 0)`), asc(users.username));
 
     return results.map((r, i) => ({
       userId: r.userId,
@@ -287,17 +287,17 @@ export class DatabaseStorage implements IStorage {
     if (!user) return undefined;
 
     const [activityResult] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+      .select({ count: sql<number>`COUNT(${activities.id})` })
       .from(activities)
       .where(eq(activities.userId, userId));
 
     const [followerResult] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+      .select({ count: sql<number>`COUNT(${follows.id})` })
       .from(follows)
       .where(eq(follows.followingId, userId));
 
     const [followingResult] = await db
-      .select({ count: sql<number>`COUNT(*)` })
+      .select({ count: sql<number>`COUNT(${follows.id})` })
       .from(follows)
       .where(eq(follows.followerId, userId));
 
@@ -348,11 +348,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMonthlyGlobalParticipantCount(monthKey: string): Promise<number> {
+    // Return total number of registered users.
     const [result] = await db
-      .select({ count: sql<number>`COUNT(DISTINCT ${activities.userId})` })
-      .from(activities)
-      .where(eq(activities.monthKey, monthKey));
+      .select({ count: sql<number>`COUNT(${users.id})` })
+      .from(users);
     return Number(result?.count || 0);
+  }
+
+  async getFollowerRankings(): Promise<{ id: string; username: string; followerCount: number }[]> {
+    const results = await db
+      .select({ id: users.id, username: users.username, followerCount: sql<number>`COALESCE(COUNT(${follows.id}), 0)` })
+      .from(users)
+      .leftJoin(follows, eq(follows.followingId, users.id))
+      .groupBy(users.id, users.username)
+      .orderBy(desc(sql`COALESCE(COUNT(${follows.id}), 0)`), asc(users.username));
+
+    return results.map(r => ({ id: r.id, username: r.username, followerCount: Number(r.followerCount) }));
   }
 
   async getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number> {
@@ -443,20 +454,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(activities.monthKey, monthKey))
       .orderBy(asc(activities.uploadedAt));
 
-    const userIdSet = new Set(monthActivities.map(a => a.userId));
-    const userIds = Array.from(userIdSet);
-    if (userIds.length === 0) return [];
+    // Fetch all verified users so we can include those with 0 territory.
+    const usersList = await db
+      .select({ id: users.id, username: users.username, paintColor: users.paintColor })
+      .from(users)
+      .orderBy(asc(users.username));
 
     const userMap = new Map<string, { username: string; paintColor: string }>();
-    for (const uid of userIds) {
-      const [u] = await db.select({ username: users.username, paintColor: users.paintColor }).from(users).where(eq(users.id, uid));
-      if (u) userMap.set(uid, u);
+    for (const u of usersList) {
+      userMap.set(u.id, { username: u.username, paintColor: u.paintColor });
     }
 
     const territories = this.computeTerritories(monthActivities, userMap);
 
     const rankings: { userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[] = [];
-    for (const [userId, userInfo] of Array.from(userMap.entries())) {
+    for (const u of usersList) {
+      const userId = u.id;
+      const userInfo = userMap.get(userId)!;
       const data = territories.get(userId);
       const totalArea = data?.totalArea || 0;
       rankings.push({
@@ -469,7 +483,10 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
-    rankings.sort((a, b) => b.territorySqMeters - a.territorySqMeters);
+    rankings.sort((a, b) => {
+      if (b.territorySqMeters !== a.territorySqMeters) return b.territorySqMeters - a.territorySqMeters;
+      return a.username.localeCompare(b.username);
+    });
     rankings.forEach((r, i) => { r.rank = i + 1; });
 
     return rankings;

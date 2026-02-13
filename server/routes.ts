@@ -397,6 +397,11 @@ export async function registerRoutes(
     return res.json(rankings);
   });
 
+  app.get("/api/rankings/by-followers", async (req: Request, res: Response) => {
+    const rankings = await storage.getFollowerRankings();
+    return res.json(rankings);
+  });
+
   app.get("/api/rankings/global-live/territories", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
     const territories = await storage.getGlobalLiveTerritories(monthKey);
