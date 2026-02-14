@@ -106,6 +106,15 @@ async function processStravaActivity(athleteId: number, activityId: number): Pro
     const monthKey = getMonthKey(activityDate);
     const actName = activity.name || "Actividad de Strava";
 
+    // Avoid duplicates when we already imported this Strava activity
+    if (activity.id) {
+      const existing = await storage.getActivityByStravaId(tokenRecord.userId, Number(activity.id));
+      if (existing) {
+        console.log(`[Strava] Activity ${activityId} already imported for user ${tokenRecord.userId}`);
+        return;
+      }
+    }
+
     await storage.createActivity(
       tokenRecord.userId,
       actName,
@@ -114,7 +123,9 @@ async function processStravaActivity(athleteId: number, activityId: number): Pro
       areaSqMeters,
       distance,
       neighborhoodName,
-      monthKey
+      monthKey,
+      activityDate,
+      activity.id ? Number(activity.id) : undefined
     );
     await storage.updateUserArea(tokenRecord.userId);
 
@@ -221,7 +232,10 @@ export function registerStravaRoutes(app: Express): void {
     }
 
     try {
-      const after = Math.floor(new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime() / 1000);
+      // Use the user's account creation date as the lower bound to import all activities since signup
+      const user = await storage.getUser(userId);
+      const afterDate = user?.createdAt ? new Date(user.createdAt) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const after = Math.floor(afterDate.getTime() / 1000);
       const activitiesRes = await fetch(
         `https://www.strava.com/api/v3/athlete/activities?after=${after}&per_page=30`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -257,6 +271,12 @@ export function registerStravaRoutes(app: Express): void {
         const activityDate = act.start_date ? new Date(act.start_date) : new Date();
         const monthKey = getMonthKey(activityDate);
 
+        // Skip already imported activities
+        if (act.id) {
+          const existing = await storage.getActivityByStravaId(userId, Number(act.id));
+          if (existing) continue;
+        }
+
         await storage.createActivity(
           userId,
           act.name || "Actividad de Strava",
@@ -265,7 +285,9 @@ export function registerStravaRoutes(app: Express): void {
           areaSqMeters,
           distance,
           neighborhoodName,
-          monthKey
+          monthKey,
+          activityDate,
+          act.id ? Number(act.id) : undefined
         );
         imported++;
       }

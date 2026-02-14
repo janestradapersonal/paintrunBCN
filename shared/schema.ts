@@ -33,6 +33,7 @@ export const activities = pgTable("activities", {
   neighborhoodName: text("neighborhood_name"),
   monthKey: text("month_key"),
   uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
+  stravaActivityId: integer("strava_activity_id"),
 });
 
 export const monthlyTitles = pgTable("monthly_titles", {
@@ -43,6 +44,14 @@ export const monthlyTitles = pgTable("monthly_titles", {
   neighborhoodName: text("neighborhood_name"),
   rank: integer("rank").notNull().default(1),
   areaSqMeters: real("area_sq_meters").notNull().default(0),
+});
+
+export const livePoints = pgTable("live_points", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  monthKey: text("month_key").notNull(),
+  points: real("points").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const follows = pgTable("follows", {

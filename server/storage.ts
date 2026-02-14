@@ -1,7 +1,7 @@
 import { eq, desc, sql, and, or, ilike, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { users, activities, verificationCodes, monthlyTitles, follows, stravaTokens, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow, type StravaToken } from "@shared/schema";
+import { users, activities, verificationCodes, monthlyTitles, follows, stravaTokens, livePoints, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow, type StravaToken } from "@shared/schema";
 import * as turf from "@turf/turf";
 
 const pool = new pg.Pool({
@@ -24,6 +24,8 @@ export interface IStorage {
   markCodeUsed(id: string): Promise<void>;
 
   createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string): Promise<Activity>;
+  createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string, uploadedAt?: Date, stravaActivityId?: number): Promise<Activity>;
+  getActivityByStravaId(userId: string, stravaActivityId: number): Promise<Activity | undefined>;
   getActivitiesByUser(userId: string): Promise<Activity[]>;
   getActivitiesByUserAndMonth(userId: string, monthKey: string): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | undefined>;
@@ -53,6 +55,8 @@ export interface IStorage {
 
   getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
   getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
+  incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[]): Promise<void>;
+  getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]>;
 
   getStravaToken(userId: string): Promise<StravaToken | undefined>;
   getStravaTokenByAthleteId(athleteId: number): Promise<StravaToken | undefined>;
@@ -115,8 +119,8 @@ export class DatabaseStorage implements IStorage {
     await db.update(verificationCodes).set({ used: true }).where(eq(verificationCodes.id, id));
   }
 
-  async createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string): Promise<Activity> {
-    const [activity] = await db.insert(activities).values({
+  async createActivity(userId: string, name: string, coordinates: number[][], polygon: number[][] | null, areaSqMeters: number, distanceMeters: number, neighborhoodName: string | null, monthKey: string, uploadedAt?: Date, stravaActivityId?: number): Promise<Activity> {
+    const insertObj: any = {
       userId,
       name,
       coordinates,
@@ -125,7 +129,15 @@ export class DatabaseStorage implements IStorage {
       distanceMeters,
       neighborhoodName,
       monthKey,
-    }).returning();
+    };
+    if (uploadedAt) insertObj.uploadedAt = uploadedAt;
+    if (stravaActivityId !== undefined) insertObj.stravaActivityId = stravaActivityId;
+    const [activity] = await db.insert(activities).values(insertObj).returning();
+    return activity;
+  }
+
+  async getActivityByStravaId(userId: string, stravaActivityId: number): Promise<Activity | undefined> {
+    const [activity] = await db.select().from(activities).where(and(eq(activities.userId, userId), eq(activities.stravaActivityId, stravaActivityId)));
     return activity;
   }
 
@@ -523,6 +535,33 @@ export class DatabaseStorage implements IStorage {
     }
 
     return result;
+  }
+
+  async incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[]): Promise<void> {
+    // For each increment, upsert into livePoints: add points to existing row or create it.
+    const now = new Date();
+    await db.transaction(async (trx) => {
+      for (const inc of increments) {
+        const [existing] = await trx.select().from(livePoints).where(and(eq(livePoints.userId, inc.userId), eq(livePoints.monthKey, monthKey)));
+        if (existing) {
+          await trx.update(livePoints).set({ points: Number(existing.points || 0) + inc.points, updatedAt: now }).where(eq(livePoints.id, existing.id));
+        } else {
+          await trx.insert(livePoints).values({ userId: inc.userId, monthKey, points: inc.points }).returning();
+        }
+      }
+    });
+  }
+
+  async getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]> {
+    // Include all users with 0 points when absent
+    const results = await db
+      .select({ userId: users.id, username: users.username, paintColor: users.paintColor, points: sql<number>`COALESCE(${livePoints.points}, 0)` })
+      .from(users)
+      .leftJoin(livePoints, and(eq(livePoints.userId, users.id), eq(livePoints.monthKey, monthKey)))
+      .groupBy(users.id, users.username, users.paintColor, livePoints.points)
+      .orderBy(desc(sql`COALESCE(${livePoints.points}, 0)`), asc(users.username));
+
+    return results.map((r, i) => ({ userId: r.userId, username: r.username, paintColor: r.paintColor, points: Number(r.points || 0), rank: i + 1 }));
   }
 
   async getStravaToken(userId: string): Promise<StravaToken | undefined> {

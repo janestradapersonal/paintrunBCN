@@ -408,9 +408,33 @@ export async function registerRoutes(
     return res.json(territories);
   });
 
+  app.get("/api/rankings/global-live/points", async (req: Request, res: Response) => {
+    const monthKey = (req.query.month as string) || getMonthKey();
+    const ranking = await storage.getLivePointsRanking(monthKey);
+    return res.json(ranking);
+  });
+
   registerStravaRoutes(app);
 
   await seedDatabase();
+
+  // Scheduler: every 10 minutes, compute current live territories and award points per 10-minute bucket.
+  const TEN_MIN_MS = 10 * 60 * 1000;
+  async function awardPointsTick() {
+    try {
+      const monthKey = getMonthKey();
+      const live = await storage.getGlobalLiveRankings(monthKey);
+      const increments = live.map(u => ({ userId: u.userId, points: (u.territorySqMeters || 0) / 1_000_000 }));
+      await storage.incrementPointsForMonth(monthKey, increments);
+      console.log(`[Points] Awarded points for ${monthKey} to ${increments.length} users`);
+    } catch (err: any) {
+      console.error("[Points] Error awarding points:", err?.message || err);
+    }
+  }
+
+  // Run once at startup then schedule.
+  awardPointsTick();
+  setInterval(awardPointsTick, TEN_MIN_MS);
 
   return httpServer;
 }
