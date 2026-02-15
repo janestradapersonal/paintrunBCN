@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map, ChevronLeft, ChevronRight, Award, Users, Zap, Percent } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
@@ -269,7 +269,7 @@ export default function RankingsPage() {
             onClick={() => { setTab("neighborhoods"); setSelectedUserId(null); }}
             data-testid="button-tab-neighborhoods"
           >
-            <Map className="w-4 h-4" /> Por Barrios
+            <MapIcon className="w-4 h-4" /> Por Barrios
           </Button>
           {participantCount && (
             <Badge variant="secondary" className="gap-1 ml-auto" data-testid="badge-participant-count">
@@ -618,7 +618,7 @@ function NeighborhoodsList({
   if (rankings.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <Map className="w-12 h-12 mx-auto mb-4 opacity-30" />
+        <MapIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
         <p className="text-sm">Sin actividad este mes en ningún barrio</p>
       </div>
     );
@@ -636,8 +636,8 @@ function NeighborhoodsList({
           className="w-full flex items-center gap-3 p-3 rounded-md text-left hover-elevate"
           data-testid={`button-neighborhood-${n.neighborhoodName}`}
         >
-          <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
-            <Map className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+            <MapIcon className="w-4 h-4 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm truncate">{n.neighborhoodName}</p>
