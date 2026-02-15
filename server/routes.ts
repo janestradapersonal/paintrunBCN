@@ -13,7 +13,7 @@ import sgMail from "@sendgrid/mail";
 import { registerStravaRoutes } from "./strava";
 import express from "express";
 import { createCheckoutSessionHandler, stripeWebhookHandler } from "./stripe";
-import { getMyGroupsHandler, joinGroupHandler } from "./groups";
+import { getMyGroupsHandler, joinGroupHandler, setGroupNameHandler } from "./groups";
 
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -109,6 +109,7 @@ export async function registerRoutes(
   // Group endpoints
   app.get("/api/groups/my", getMyGroupsHandler);
   app.post("/api/groups/join", joinGroupHandler);
+  app.post("/api/groups/:id/name", setGroupNameHandler);
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {

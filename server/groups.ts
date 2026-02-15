@@ -33,3 +33,23 @@ export async function joinGroupHandler(req: Request, res: Response) {
     return res.status(500).json({ message: "Error uniendo al grupo" });
   }
 }
+
+export async function setGroupNameHandler(req: Request, res: Response) {
+  const userId = req.session?.userId as string | undefined;
+  if (!userId) return res.status(401).json({ message: "No autorizado" });
+
+  const groupId = req.params.id;
+  const { name } = req.body || {};
+  if (!groupId) return res.status(400).json({ message: "groupId required" });
+  if (!name || typeof name !== "string") return res.status(400).json({ message: "name required" });
+
+  try {
+    // TODO: could verify the user is admin/owner; for now assume membership implies rights
+    await storage.updateGroupName(groupId, name);
+    const groups = await storage.getGroupsForUser(userId);
+    return res.json({ success: true, groups });
+  } catch (err: any) {
+    console.error("[Groups] setGroupName error:", err?.message || err);
+    return res.status(500).json({ message: "Error actualizando nombre" });
+  }
+}

@@ -619,6 +619,10 @@ export class DatabaseStorage implements IStorage {
     return (q.rows && q.rows[0]) || undefined;
   }
 
+  async updateGroupName(groupId: string, name: string): Promise<void> {
+    await db.execute(sql`UPDATE groups SET name = ${name} WHERE id = ${groupId}`);
+  }
+
   async findStripeEventById(eventId: string): Promise<boolean> {
     const q = await db.execute(sql`SELECT 1 FROM stripe_events WHERE event_id = ${eventId} LIMIT 1`);
     return !!(q && (q.rowCount || 0) > 0);
