@@ -12,15 +12,8 @@ declare module "http" {
   }
 }
 
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false }));
+// body parsing will be configured inside routes so that the Stripe webhook
+// can be mounted with `express.raw()` before JSON parsing is applied.
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

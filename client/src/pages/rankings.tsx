@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import ContextSelector from "@/components/context-selector";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
 import UserSearch from "@/components/user-search";
@@ -111,6 +112,14 @@ function MonthSelector({ monthKey, onChange }: { monthKey: string; onChange: (mk
 
 export default function RankingsPage() {
   const { user } = useAuth();
+  const [groupContext, setGroupContext] = useState<{ type: "world" | "group"; groupId?: string }>(() => {
+    try {
+      const raw = localStorage.getItem("contextSelector");
+      return raw ? JSON.parse(raw) : { type: "world" };
+    } catch (e) {
+      return { type: "world" };
+    }
+  });
   const [tab, setTab] = useState<"global" | "neighborhoods" | "global-live">("global-live");
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -121,7 +130,9 @@ export default function RankingsPage() {
   const { data: globalRankings = [], isLoading: globalLoading } = useQuery<RankedUser[]>({
     queryKey: ["/api/rankings", "month", monthKey],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading rankings");
       return res.json();
     },
@@ -129,9 +140,11 @@ export default function RankingsPage() {
   });
 
   const { data: neighborhoodRankings = [], isLoading: neighborhoodLoading } = useQuery<NeighborhoodRanking[]>({
-    queryKey: ["/api/rankings/neighborhoods", "month", monthKey],
+    queryKey: ["/api/rankings/neighborhoods", "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/neighborhoods?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/neighborhoods?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading neighborhood rankings");
       return res.json();
     },
@@ -139,9 +152,11 @@ export default function RankingsPage() {
   });
 
   const { data: neighborhoodLeaderboard = [] } = useQuery<RankedUser[]>({
-    queryKey: ["/api/rankings/neighborhoods", selectedNeighborhood, "month", monthKey],
+    queryKey: ["/api/rankings/neighborhoods", selectedNeighborhood, "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/neighborhoods/${encodeURIComponent(selectedNeighborhood!)}?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/neighborhoods/${encodeURIComponent(selectedNeighborhood!)}?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading leaderboard");
       return res.json();
     },
@@ -149,9 +164,11 @@ export default function RankingsPage() {
   });
 
   const { data: liveRankings = [], isLoading: liveLoading } = useQuery<LiveRankedUser[]>({
-    queryKey: ["/api/rankings/global-live", "month", monthKey],
+    queryKey: ["/api/rankings/global-live", "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/global-live?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/global-live?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading live rankings");
       return res.json();
     },
@@ -159,9 +176,11 @@ export default function RankingsPage() {
   });
 
   const { data: livePoints = [], isLoading: livePointsLoading } = useQuery<LivePointsUser[]>({
-    queryKey: ["/api/rankings/global-live/points", "month", monthKey],
+    queryKey: ["/api/rankings/global-live/points", "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/global-live/points?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/global-live/points?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading live points");
       return res.json();
     },
@@ -169,9 +188,11 @@ export default function RankingsPage() {
   });
 
   const { data: liveTerritoriesData = [] } = useQuery<TerritoryData[]>({
-    queryKey: ["/api/rankings/global-live/territories", "month", monthKey],
+    queryKey: ["/api/rankings/global-live/territories", "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/global-live/territories?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/global-live/territories?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading territories");
       return res.json();
     },
@@ -239,9 +260,11 @@ export default function RankingsPage() {
   });
 
   const { data: participantCount } = useQuery<{ count: number }>({
-    queryKey: ["/api/rankings/participant-count", "month", monthKey],
+    queryKey: ["/api/rankings/participant-count", "month", monthKey, groupContext],
     queryFn: async () => {
-      const res = await fetch(`/api/rankings/participant-count?month=${monthKey}`, { credentials: "include" });
+      const q = new URLSearchParams({ month: monthKey });
+      if (groupContext.type === "group" && groupContext.groupId) q.set("groupId", groupContext.groupId);
+      const res = await fetch(`/api/rankings/participant-count?${q.toString()}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error");
       return res.json();
     },
@@ -277,8 +300,11 @@ export default function RankingsPage() {
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
           </div>
-          <UserSearch className="w-48 lg:w-64" />
-          <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
+          <div className="flex items-center gap-3">
+            <UserSearch className="w-48 lg:w-64" />
+            <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
+            <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
+          </div>
         </div>
       </header>
 

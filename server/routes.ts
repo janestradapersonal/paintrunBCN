@@ -11,6 +11,9 @@ import pg from "pg";
 import multer from "multer";
 import sgMail from "@sendgrid/mail";
 import { registerStravaRoutes } from "./strava";
+import express from "express";
+import { createCheckoutSessionHandler, stripeWebhookHandler } from "./stripe";
+import { getMyGroupsHandler, joinGroupHandler } from "./groups";
 
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -67,7 +70,21 @@ export async function registerRoutes(
 ): Promise<Server> {
   const PgSession = connectPgSimple(session);
   const sessionPool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  // Register Stripe webhook route with raw body parser before applying JSON body parser
+  app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
 
+  // Now apply JSON and urlencoded body parsers for the rest of routes
+  app.use(
+    express.json({
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
+
+  app.use(express.urlencoded({ extended: false }));
+
+  // Session middleware
   app.use(
     session({
       store: new PgSession({
@@ -85,6 +102,13 @@ export async function registerRoutes(
       },
     })
   );
+
+  // Register Stripe other endpoint for creating checkout session
+  app.post("/api/stripe/create-checkout-session", createCheckoutSessionHandler);
+
+  // Group endpoints
+  app.get("/api/groups/my", getMyGroupsHandler);
+  app.post("/api/groups/join", joinGroupHandler);
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {

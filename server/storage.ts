@@ -592,6 +592,45 @@ export class DatabaseStorage implements IStorage {
   async deleteStravaToken(userId: string): Promise<void> {
     await db.delete(stravaTokens).where(eq(stravaTokens.userId, userId));
   }
+
+  // --- Groups / Stripe events helpers ---
+  async updateUserStripeCustomer(userId: string, customerId: string): Promise<void> {
+    await db.execute(sql`UPDATE users SET stripe_customer_id = ${customerId} WHERE id = ${userId}`);
+  }
+
+  async createGroup(ownerUserId: string, name: string | null, inviteCode: string, stripeSubscriptionId: string | null): Promise<string> {
+    const insertQuery = await db.execute(sql`INSERT INTO groups (name, owner_user_id, invite_code, stripe_subscription_id, status, created_at) VALUES (${name}, ${ownerUserId}, ${inviteCode}, ${stripeSubscriptionId}, 'active', NOW()) RETURNING id`);
+    const id = insertQuery && (insertQuery.rows && insertQuery.rows[0] && insertQuery.rows[0].id);
+    if (!id) throw new Error("Failed to create group");
+    return String(id);
+  }
+
+  async addGroupMember(groupId: string, userId: string, role: string = "member"): Promise<void> {
+    await db.execute(sql`INSERT INTO group_members (group_id, user_id, role, created_at) VALUES (${groupId}, ${userId}, ${role}, NOW()) ON CONFLICT DO NOTHING`);
+  }
+
+  async getGroupsForUser(userId: string): Promise<any[]> {
+    const q = await db.execute(sql`SELECT g.id, g.name, g.invite_code, gm.role, g.status, g.created_at FROM groups g JOIN group_members gm ON gm.group_id = g.id WHERE gm.user_id = ${userId} ORDER BY g.created_at DESC`);
+    return q.rows || [];
+  }
+
+  async findGroupByInviteCode(inviteCode: string): Promise<any | undefined> {
+    const q = await db.execute(sql`SELECT * FROM groups WHERE invite_code = ${inviteCode} AND status = 'active' LIMIT 1`);
+    return (q.rows && q.rows[0]) || undefined;
+  }
+
+  async findStripeEventById(eventId: string): Promise<boolean> {
+    const q = await db.execute(sql`SELECT 1 FROM stripe_events WHERE event_id = ${eventId} LIMIT 1`);
+    return !!(q && (q.rowCount || 0) > 0);
+  }
+
+  async insertStripeEvent(eventId: string, payload: string): Promise<void> {
+    await db.execute(sql`INSERT INTO stripe_events (event_id, payload, created_at) VALUES (${eventId}, ${payload}, NOW()) ON CONFLICT DO NOTHING`);
+  }
+
+  async markGroupsInactiveBySubscriptionId(subscriptionId: string): Promise<void> {
+    await db.execute(sql`UPDATE groups SET status = 'inactive' WHERE stripe_subscription_id = ${subscriptionId}`);
+  }
 }
 
 export const storage = new DatabaseStorage();
