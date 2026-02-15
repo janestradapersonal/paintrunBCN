@@ -177,6 +177,43 @@ export default function RankingsPage() {
     enabled: tab === "global-live",
   });
 
+  // Color palette for top N users in Global Live (distinct colors)
+  const COLOR_PALETTE = [
+    "#FF4500",
+    "#1E90FF",
+    "#32CD32",
+    "#FFD700",
+    "#8A2BE2",
+    "#FF69B4",
+    "#00CED1",
+    "#FF8C00",
+    "#ADFF2F",
+    "#00BFFF",
+    "#DC143C",
+    "#20B2AA",
+    "#DA70D6",
+    "#B8860B",
+    "#5F9EA0",
+    "#FF1493",
+    "#7CFC00",
+    "#4169E1",
+    "#FF6347",
+    "#2E8B57",
+  ];
+
+  const colorOverrides = {} as Record<string, string>;
+  for (let i = 0; i < Math.min(COLOR_PALETTE.length, liveRankings.length); i++) {
+    const u = liveRankings[i];
+    if (u && u.userId) colorOverrides[u.userId] = COLOR_PALETTE[i];
+  }
+
+  // Build meta map for territories: points and percent
+  const territoryMeta: Record<string, { points: number; percent: number }> = {};
+  for (const lr of liveRankings) {
+    const pts = (livePoints || []).find((p) => p.userId === lr.userId)?.points || 0;
+    territoryMeta[lr.userId] = { points: pts, percent: lr.territoryPercent };
+  }
+
   const activeUserId = tab === "global"
     ? selectedUserId
     : tab === "neighborhoods"
@@ -292,6 +329,7 @@ export default function RankingsPage() {
             <GlobalLiveRankingList
               rankings={liveRankings}
               points={livePoints}
+              colorOverrides={colorOverrides}
               selectedUserId={selectedUserId}
               onSelectUser={setSelectedUserId}
             />
@@ -328,6 +366,8 @@ export default function RankingsPage() {
               interactive={true}
               territories={liveTerritoriesData}
               highlightUserId={selectedUserId}
+              territoryColorOverrides={colorOverrides}
+              territoryMeta={territoryMeta}
             />
           ) : activeUserId ? (
             <BarcelonaMap
@@ -371,11 +411,13 @@ export default function RankingsPage() {
 function GlobalLiveRankingList({
   rankings,
   points,
+  colorOverrides,
   selectedUserId,
   onSelectUser,
 }: {
   rankings: LiveRankedUser[];
   points?: LivePointsUser[];
+  colorOverrides?: Record<string, string>;
   selectedUserId: string | null;
   onSelectUser: (id: string | null) => void;
 }) {
@@ -422,7 +464,7 @@ function GlobalLiveRankingList({
             >
               <div
                 className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5"
-                style={{ backgroundColor: u.paintColor + "30", color: u.paintColor }}
+                style={{ backgroundColor: ((colorOverrides?.[u.userId]) || u.paintColor) + "30", color: (colorOverrides?.[u.userId]) || u.paintColor }}
               >
                 {i === 0 ? <Crown className="w-5 h-5" /> : <Medal className="w-5 h-5" />}
               </div>
@@ -460,11 +502,11 @@ function GlobalLiveRankingList({
             </span>
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: u.paintColor + "25" }}
+              style={{ backgroundColor: ((colorOverrides?.[u.userId]) || u.paintColor) + "25" }}
             >
               <div
                 className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: u.paintColor }}
+                style={{ backgroundColor: (colorOverrides?.[u.userId]) || u.paintColor }}
               />
             </div>
             <div className="flex-1 min-w-0">

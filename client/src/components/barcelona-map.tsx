@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, GeoJSON, Polygon, Polyline, useMap } from "react-leaflet";
+import L from "leaflet";
 import type { FeatureCollection } from "geojson";
 import type { Activity } from "@shared/schema";
 import "leaflet/dist/leaflet.css";
@@ -24,6 +25,8 @@ interface BarcelonaMapProps {
   highlightNeighborhood?: string | null;
   territories?: TerritoryData[];
   highlightUserId?: string | null;
+  territoryColorOverrides?: Record<string, string>;
+  territoryMeta?: Record<string, { points: number; percent: number }>;
 }
 
 function MapBounds() {
@@ -59,6 +62,8 @@ export default function BarcelonaMap({
   highlightNeighborhood = null,
   territories = [],
   highlightUserId = null,
+  territoryColorOverrides = undefined,
+  territoryMeta = undefined,
 }: BarcelonaMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -249,6 +254,8 @@ export default function BarcelonaMap({
           const opacity = highlightUserId ? (isHighlighted ? 0.55 : 0.15) : 0.4;
           const weight = isHighlighted ? 3 : 1.5;
 
+          const overrideColor = (territoryColorOverrides && territoryColorOverrides[territory.userId]) || territory.paintColor;
+
           return territory.polygons.map((polyCoords, polyIdx) => {
             if (!polyCoords || !Array.isArray(polyCoords) || polyCoords.length === 0) return null;
 
@@ -274,11 +281,28 @@ export default function BarcelonaMap({
                 key={`territory-${territory.userId}-${polyIdx}`}
                 positions={positions}
                 pathOptions={{
-                  color: territory.paintColor,
-                  fillColor: territory.paintColor,
+                  color: overrideColor,
+                  fillColor: overrideColor,
                   fillOpacity: opacity,
                   weight,
                   opacity: highlightUserId ? (isHighlighted ? 0.9 : 0.3) : 0.7,
+                }}
+                eventHandlers={{
+                  click: (e) => {
+                    try {
+                      const map = (e as any).target._map as L.Map | undefined;
+                      const meta = (territoryMeta && territoryMeta[territory.userId]) || { points: 0, percent: 0 };
+                      const content = `<div style="min-width:140px"><strong>${territory.username}</strong><br/>${meta.points.toFixed(2)} pts<br/>${meta.percent}% de Barcelona</div>`;
+                      if (map) {
+                        L.popup({ maxWidth: 240 })
+                          .setLatLng((e as any).latlng)
+                          .setContent(content)
+                          .openOn(map as any);
+                      }
+                    } catch (err) {
+                      // ignore
+                    }
+                  }
                 }}
               />
             );
@@ -309,17 +333,20 @@ export default function BarcelonaMap({
         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm rounded-md p-3 text-xs z-[1000]" data-testid="territory-legend">
           <p className="font-semibold mb-1.5 text-foreground">Territorios</p>
           <div className="flex flex-col gap-1 max-h-32 overflow-y-auto">
-            {territories.map((t) => (
-              <div key={t.userId} className="flex items-center gap-1.5">
-                <div
-                  className="w-3 h-3 rounded-sm flex-shrink-0"
-                  style={{ backgroundColor: t.paintColor }}
-                />
-                <span className={`truncate ${highlightUserId === t.userId ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                  {t.username}
-                </span>
-              </div>
-            ))}
+            {territories.map((t) => {
+              const color = (territoryColorOverrides && territoryColorOverrides[t.userId]) || t.paintColor;
+              return (
+                <div key={t.userId} className="flex items-center gap-1.5">
+                  <div
+                    className="w-3 h-3 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className={`truncate ${highlightUserId === t.userId ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                    {t.username}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
