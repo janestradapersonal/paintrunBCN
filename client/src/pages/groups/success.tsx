@@ -64,7 +64,7 @@ export default function GroupSuccessPage() {
       ) : (
         <div className="space-y-2 mb-4">
           <label className="block text-sm font-medium">Pon un nombre a tu grupo</label>
-          <input className="input w-full" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del grupo" />
+          <input className="input w-full text-black" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del grupo" />
           <div className="flex gap-2">
             <button className="btn" onClick={saveName} disabled={saving || name.trim().length === 0}>{saving ? 'Guardando…' : 'Guardar y entrar al grupo'}</button>
             <button className="btn-ghost" onClick={() => { localStorage.setItem("contextSelector", JSON.stringify({ type: "group", groupId: group.id })); window.location.href = "/rankings"; }}>Entrar sin nombre</button>
@@ -75,8 +75,13 @@ export default function GroupSuccessPage() {
       <div className="mt-4">
         <p className="text-sm">Comparte este enlace con tus amigos para que se unan:</p>
         <div className="mt-2">
-          <input readOnly className="input w-full" value={`${window.location.origin}/groups?invite=${group.invite_code}`} onFocus={(e) => (e.target as HTMLInputElement).select()} />
+          <input readOnly className="input w-full text-black" value={`${window.location.origin}/groups?invite=${group.invite_code}`} onFocus={(e) => (e.target as HTMLInputElement).select()} />
         </div>
+      </div>
+
+      <div className="mt-6 flex gap-2">
+        <button className="btn-ghost" onClick={() => { window.location.href = "/groups"; }}>Volver a Grupos</button>
+        <button className="btn" onClick={() => { localStorage.setItem("contextSelector", JSON.stringify({ type: "group", groupId: group.id })); window.location.href = "/rankings"; }}>Ir al ranking del grupo</button>
       </div>
     </div>
   );

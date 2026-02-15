@@ -52,7 +52,7 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       <div>
         <Label>Unirse con código de invitación</Label>
         <div className="flex gap-2 mt-2">
-          <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Código (ej: AB12CD)" className="flex-1" />
+          <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Código (ej: AB12CD)" className="flex-1 text-black" />
           <Button onClick={join} disabled={joining || !inviteCode.trim()}>{joining ? "Uniendo…" : "Unirse"}</Button>
         </div>
         {joinError && <p className="text-red-500 text-sm mt-1">{joinError}</p>}
