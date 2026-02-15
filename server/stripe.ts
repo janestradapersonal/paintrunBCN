@@ -1,8 +1,12 @@
 import type { Express, Request, Response } from "express";
-// Use require to avoid strict module resolution during TS compile in this environment
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-const Stripe = require("stripe");
+// Try to require Stripe at runtime. Use eval to avoid static bundler resolution issues.
+let Stripe: any = null;
+try {
+  // eslint-disable-next-line no-eval
+  Stripe = eval("require")("stripe");
+} catch (e) {
+  console.warn("stripe package not available at build-time; runtime require will be attempted");
+}
 import { storage } from "./storage";
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
@@ -10,7 +14,7 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const STRIPE_GROUP_PRICE_ID = process.env.STRIPE_GROUP_PRICE_ID || "";
 const APP_URL = process.env.APP_URL || "http://localhost:5000";
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2022-11-15" });
+const stripe = Stripe ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2022-11-15" }) : null;
 
 function genInviteCode() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -84,7 +88,7 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
         }
 
         // Create group and membership
-        const inviteCode = genInviteCode();
+        let inviteCode = genInviteCode();
         // ensure unique invite_code by retrying a few times
         let groupId: string | null = null;
         for (let i = 0; i < 5; i++) {
