@@ -27,6 +27,8 @@ interface BarcelonaMapProps {
   highlightUserId?: string | null;
   territoryColorOverrides?: Record<string, string>;
   territoryMeta?: Record<string, { points: number; percent: number }>;
+  onHoverTerritory?: (userId: string) => void;
+  onLeaveTerritory?: () => void;
 }
 
 function MapBounds() {
@@ -64,6 +66,8 @@ export default function BarcelonaMap({
   highlightUserId = null,
   territoryColorOverrides = undefined,
   territoryMeta = undefined,
+  onHoverTerritory = undefined,
+  onLeaveTerritory = undefined,
 }: BarcelonaMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -288,6 +292,29 @@ export default function BarcelonaMap({
                   opacity: highlightUserId ? (isHighlighted ? 0.9 : 0.3) : 0.7,
                 }}
                 eventHandlers={{
+                  mouseover: (e) => {
+                    try {
+                      const map = (e as any).target._map as L.Map | undefined;
+                      const meta = (territoryMeta && territoryMeta[territory.userId]) || { points: 0, percent: 0 };
+                      const content = `<div style="min-width:140px"><strong>${territory.username}</strong><br/>${meta.points.toFixed(2)} pts<br/>${meta.percent}% de Barcelona</div>`;
+                      if (map) {
+                        L.popup({ maxWidth: 240 })
+                          .setLatLng((e as any).latlng)
+                          .setContent(content)
+                          .openOn(map as any);
+                      }
+                    } catch (err) {
+                      // ignore
+                    }
+                    if (typeof onHoverTerritory === 'function') onHoverTerritory(territory.userId);
+                  },
+                  mouseout: (e) => {
+                    try {
+                      const map = (e as any).target._map as L.Map | undefined;
+                      if (map) map.closePopup();
+                    } catch {}
+                    if (typeof onLeaveTerritory === 'function') onLeaveTerritory();
+                  },
                   click: (e) => {
                     try {
                       const map = (e as any).target._map as L.Map | undefined;

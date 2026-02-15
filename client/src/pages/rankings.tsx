@@ -114,6 +114,7 @@ export default function RankingsPage() {
   const [tab, setTab] = useState<"global" | "neighborhoods" | "global-live">("global-live");
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
   const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null);
   const [panelMode, setPanelMode] = useState<PanelMode>("list");
 
@@ -214,11 +215,13 @@ export default function RankingsPage() {
     territoryMeta[lr.userId] = { points: pts, percent: lr.territoryPercent };
   }
 
+  const effectiveSelectedUserId = hoveredUserId || selectedUserId;
+
   const activeUserId = tab === "global"
-    ? selectedUserId
+    ? effectiveSelectedUserId
     : tab === "neighborhoods"
-    ? (selectedUserId || (neighborhoodLeaderboard.length > 0 ? (neighborhoodLeaderboard[0].userId || neighborhoodLeaderboard[0].id) : null))
-    : selectedUserId;
+    ? (effectiveSelectedUserId || (neighborhoodLeaderboard.length > 0 ? (neighborhoodLeaderboard[0].userId || neighborhoodLeaderboard[0].id) : null))
+    : effectiveSelectedUserId;
 
   const { data: selectedActivities = [] } = useQuery<Activity[]>({
     queryKey: ["/api/users", activeUserId, "activities", "month", monthKey],
@@ -365,9 +368,17 @@ export default function RankingsPage() {
               className="w-full h-full"
               interactive={true}
               territories={liveTerritoriesData}
-              highlightUserId={selectedUserId}
+              highlightUserId={hoveredUserId || selectedUserId}
               territoryColorOverrides={colorOverrides}
               territoryMeta={territoryMeta}
+              onHoverTerritory={(id) => {
+                setHoveredUserId(id);
+                setSelectedUserId(id);
+              }}
+              onLeaveTerritory={() => {
+                // only clear hover state
+                setHoveredUserId(null);
+              }}
             />
           ) : activeUserId ? (
             <BarcelonaMap
