@@ -30,6 +30,14 @@ type LiveRankedUser = {
   rank: number;
 };
 
+type LivePointsUser = {
+  userId: string;
+  username: string;
+  paintColor: string;
+  points: number;
+  rank: number;
+};
+
 type TerritoryData = {
   userId: string;
   username: string;
@@ -144,6 +152,16 @@ export default function RankingsPage() {
     queryFn: async () => {
       const res = await fetch(`/api/rankings/global-live?month=${monthKey}`, { credentials: "include" });
       if (!res.ok) throw new Error("Error loading live rankings");
+      return res.json();
+    },
+    enabled: tab === "global-live",
+  });
+
+  const { data: livePoints = [], isLoading: livePointsLoading } = useQuery<LivePointsUser[]>({
+    queryKey: ["/api/rankings/global-live/points", "month", monthKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/rankings/global-live/points?month=${monthKey}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Error loading live points");
       return res.json();
     },
     enabled: tab === "global-live",
@@ -273,6 +291,7 @@ export default function RankingsPage() {
           ) : tab === "global-live" ? (
             <GlobalLiveRankingList
               rankings={liveRankings}
+              points={livePoints}
               selectedUserId={selectedUserId}
               onSelectUser={setSelectedUserId}
             />
@@ -347,15 +366,24 @@ export default function RankingsPage() {
   );
 }
 
+
+
 function GlobalLiveRankingList({
   rankings,
+  points,
   selectedUserId,
   onSelectUser,
 }: {
   rankings: LiveRankedUser[];
+  points?: LivePointsUser[];
   selectedUserId: string | null;
   onSelectUser: (id: string | null) => void;
 }) {
+  const pointsMap = new Map<string, number>();
+  if (points) {
+    for (const p of points) pointsMap.set(p.userId, p.points || 0);
+  }
+
   if (rankings.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -402,6 +430,9 @@ function GlobalLiveRankingList({
                 <span className="text-xs font-bold truncate w-full text-center hover:underline">{u.username}</span>
               </Link>
               <span className="text-[10px] text-muted-foreground mt-0.5">{formatArea(u.territorySqMeters)}</span>
+              <Badge variant="secondary" className="mt-1 text-[10px] gap-0.5">
+                {Number((pointsMap.get(u.userId) || 0).toFixed(2))} pts
+              </Badge>
               <Badge
                 variant="secondary"
                 className="mt-1 text-[10px] gap-0.5"
@@ -444,10 +475,13 @@ function GlobalLiveRankingList({
                 {u.territoryPercent}% de Barcelona
               </p>
             </div>
-            <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {formatArea(u.territorySqMeters)}
-            </span>
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {formatArea(u.territorySqMeters)}
+              </span>
+              <span className="text-[11px] text-muted-foreground">{(pointsMap.get(u.userId) || 0).toFixed(2)} pts</span>
+            </div>
           </button>
         ))}
       </div>
