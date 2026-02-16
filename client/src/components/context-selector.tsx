@@ -79,9 +79,11 @@ export default function ContextSelector({
             {groups.length === 0 && <div className="text-sm text-muted-foreground">No estás en ningún grupo</div>}
             {groups.map((g) => (
               <div key={g.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
-                <div className="font-medium">{g.name}</div>
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{g.name}</div>
+                  <div className="text-[12px] text-muted-foreground">Código: {g.invite_code}</div>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{g.invite_code}</Badge>
                   <Button size="sm" onClick={() => { onChange({ type: "group", groupId: g.id }); setShowListDialog(false); }}>Entrar</Button>
                 </div>
               </div>
