@@ -90,7 +90,6 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
         }
 
         // Create group and membership, using provided name if present in metadata
-        const metadata = session.metadata || {};
         const providedName = metadata.name && metadata.name.length > 0 ? metadata.name : null;
 
         let inviteCode = genInviteCode();
