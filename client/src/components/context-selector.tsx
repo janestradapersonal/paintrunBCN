@@ -38,6 +38,11 @@ export default function ContextSelector({
     return () => { mounted = false; };
   }, []);
 
+  const currentName =
+    value.type === "world"
+      ? "BCN"
+      : groups.find((g) => g.id === value.groupId)?.name || "BCN";
+
   const handleCreate = async () => {
     try {
       const res = await fetch(`/api/stripe/create-checkout-session`, { method: "POST", credentials: "include" });
@@ -51,13 +56,13 @@ export default function ContextSelector({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="text-sm font-medium">Contexto</div>
+      <div className="text-sm font-medium">{currentName}</div>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="uppercase">COMPETICIONES</Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent>
+        <DropdownMenuContent className="z-[99999]">
           <DropdownMenuItem onSelect={() => setShowListDialog(true)}>Ver grupos</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setShowJoinDialog(true)}>Entrar grupo</DropdownMenuItem>
           <DropdownMenuItem onSelect={handleCreate}>Crear grupo (Pago)</DropdownMenuItem>
