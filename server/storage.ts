@@ -53,8 +53,8 @@ export interface IStorage {
   getMonthlyNeighborhoodParticipantCount(neighborhoodName: string, monthKey: string): Promise<number>;
   getFollowerRankings(): Promise<{ id: string; username: string; followerCount: number }[]>;
 
-  getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
-  getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
+  getGlobalLiveRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
+  getGlobalLiveTerritories(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
   incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[]): Promise<void>;
   getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]>;
 
@@ -483,18 +483,23 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getGlobalLiveRankings(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]> {
+  async getGlobalLiveRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]> {
     const BARCELONA_AREA_SQM = 101_400_000;
 
-    const monthActivities = await db.select().from(activities)
-      .where(eq(activities.monthKey, monthKey))
-      .orderBy(asc(activities.uploadedAt));
+    // If a groupId is provided, only consider activities from users in that group
+    const monthActivities = groupId
+      ? (await db.execute(sql`SELECT * FROM activities a WHERE a.month_key = ${monthKey} AND a.user_id IN (SELECT user_id FROM group_members WHERE group_id = ${groupId}) ORDER BY a.uploaded_at ASC`)).rows
+      : await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
 
     // Fetch all verified users so we can include those with 0 territory.
-    const usersList = await db
-      .select({ id: users.id, username: users.username, paintColor: users.paintColor })
-      .from(users)
-      .orderBy(asc(users.username));
+    // Determine which users to include: either all verified users or only group members
+    let usersList: any[] = [];
+    if (groupId) {
+      const q = await db.execute(sql`SELECT u.id, u.username, u.paint_color as paintColor FROM users u JOIN group_members gm ON gm.user_id = u.id WHERE gm.group_id = ${groupId} ORDER BY u.username ASC`);
+      usersList = q.rows || [];
+    } else {
+      usersList = await db.select({ id: users.id, username: users.username, paintColor: users.paintColor }).from(users).orderBy(asc(users.username));
+    }
 
     const userMap = new Map<string, { username: string; paintColor: string }>();
     for (const u of usersList) {
@@ -528,10 +533,10 @@ export class DatabaseStorage implements IStorage {
     return rankings;
   }
 
-  async getGlobalLiveTerritories(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]> {
-    const monthActivities = await db.select().from(activities)
-      .where(eq(activities.monthKey, monthKey))
-      .orderBy(asc(activities.uploadedAt));
+  async getGlobalLiveTerritories(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]> {
+    const monthActivities = groupId
+      ? (await db.execute(sql`SELECT * FROM activities a WHERE a.month_key = ${monthKey} AND a.user_id IN (SELECT user_id FROM group_members WHERE group_id = ${groupId}) ORDER BY a.uploaded_at ASC`)).rows
+      : await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
 
     const userIdSet = new Set(monthActivities.map(a => a.userId));
     const userIds = Array.from(userIdSet);
@@ -576,8 +581,20 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]> {
-    // Include all users with 0 points when absent
+  async getLivePointsRanking(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]> {
+    // Include all users with 0 points when absent. If groupId provided, restrict to group members.
+    if (groupId) {
+      const q = await db.execute(sql`
+        SELECT u.id as userId, u.username as username, u.paint_color as paintColor, COALESCE(lp.points,0) as points
+        FROM users u
+        JOIN group_members gm ON gm.user_id = u.id AND gm.group_id = ${groupId}
+        LEFT JOIN live_points lp ON lp.user_id = u.id AND lp.month_key = ${monthKey}
+        ORDER BY COALESCE(lp.points,0) DESC, u.username ASC
+      `);
+      const rows = q.rows || [];
+      return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, paintColor: r.paintcolor || r.paintColor, points: Number(r.points || 0), rank: i + 1 }));
+    }
+
     const results = await db
       .select({ userId: users.id, username: users.username, paintColor: users.paintColor, points: sql<number>`COALESCE(${livePoints.points}, 0)` })
       .from(users)

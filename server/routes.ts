@@ -421,7 +421,8 @@ export async function registerRoutes(
 
   app.get("/api/rankings/global-live", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
-    const rankings = await storage.getGlobalLiveRankings(monthKey);
+    const groupId = req.query.groupId as string | undefined;
+    const rankings = await storage.getGlobalLiveRankings(monthKey, groupId);
     return res.json(rankings);
   });
 
@@ -432,13 +433,15 @@ export async function registerRoutes(
 
   app.get("/api/rankings/global-live/territories", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
-    const territories = await storage.getGlobalLiveTerritories(monthKey);
+    const groupId = req.query.groupId as string | undefined;
+    const territories = await storage.getGlobalLiveTerritories(monthKey, groupId);
     return res.json(territories);
   });
 
   app.get("/api/rankings/global-live/points", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
-    const ranking = await storage.getLivePointsRanking(monthKey);
+    const groupId = req.query.groupId as string | undefined;
+    const ranking = await storage.getLivePointsRanking(monthKey, groupId);
     return res.json(ranking);
   });
 
