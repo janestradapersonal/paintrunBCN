@@ -6,10 +6,39 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
 
   useEffect(() => {
-    fetch(`/api/groups/my`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : [])
-      .then((data) => setGroups(data || []))
-      .catch(() => {});
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/groups/my`, { credentials: "include" });
+        const data = res.ok ? await res.json() : [];
+        if (mounted) setGroups(data || []);
+      } catch (e) {}
+    };
+    load();
+
+    // If there is an invite code in the URL, auto-join
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const invite = params.get("invite");
+      if (invite) {
+        (async () => {
+          try {
+            const r = await fetch(`/api/groups/join`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inviteCode: invite }) });
+            if (r.ok) {
+              const data = await r.json();
+              // data.group contains the joined group
+              if (mounted) setGroups(data.groups || []);
+              // set context and go to rankings
+              if (data.group && data.group.id) {
+                localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: data.group.id }));
+                window.location.href = '/rankings';
+              }
+            }
+          } catch (e) {}
+        })();
+      }
+    } catch (e) {}
+    return () => { mounted = false; };
   }, []);
 
   return (
@@ -24,11 +53,11 @@ export default function GroupsPage() {
 
         <div className="card p-4">
           <h3 className="font-semibold mb-2">Mis grupos</h3>
-          {groups.length === 0 ? (
+          {groups.filter(g => g.name && g.name.trim().length > 0).length === 0 ? (
             <p className="text-sm text-muted-foreground">No perteneces a ningún grupo todavía.</p>
           ) : (
             <ul className="space-y-2">
-              {groups.map((g) => (
+              {groups.filter(g => g.name && g.name.trim().length > 0).map((g) => (
                 <li key={g.id} className="flex items-center justify-between border rounded p-2">
                   <div>
                     <div className="font-medium">{g.name}</div>

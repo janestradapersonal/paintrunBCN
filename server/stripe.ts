@@ -25,12 +25,14 @@ export async function createCheckoutSessionHandler(req: Request, res: Response) 
     const userId = req.session?.userId as string | undefined;
     if (!userId) return res.status(401).json({ message: "No autorizado" });
 
+    const { name } = req.body || {};
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: STRIPE_GROUP_PRICE_ID, quantity: 1 }],
       success_url: `${APP_URL}/groups/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/groups`,
-      metadata: { userId },
+      metadata: { userId, name: name || "" },
     });
 
     console.log(`[Stripe] Created checkout session ${session.id} for user ${userId}`);
@@ -87,20 +89,20 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
           await storage.updateUserStripeCustomer(userId, customer);
         }
 
-        // Create group and membership
+        // Create group and membership, using provided name if present in metadata
+        const metadata = session.metadata || {};
+        const providedName = metadata.name && metadata.name.length > 0 ? metadata.name : null;
+
         let inviteCode = genInviteCode();
-        // ensure unique invite_code by retrying a few times
         let groupId: string | null = null;
         for (let i = 0; i < 5; i++) {
           try {
-            const gid = await storage.createGroup(userId, null, inviteCode, subscription || null);
+            const gid = await storage.createGroup(userId, providedName, inviteCode, subscription || null);
             groupId = gid;
             break;
           } catch (err: any) {
-            // possible unique violation, try a new code
             console.warn("[Stripe] invite_code collision, retrying", err?.message || err);
-            // generate new code
-            (inviteCode as any) = genInviteCode();
+            inviteCode = genInviteCode();
             continue;
           }
         }

@@ -79,6 +79,15 @@ export default function GroupSuccessPage() {
         </div>
       </div>
 
+      <div className="mt-4">
+        <button className="btn" onClick={() => {
+          const shareUrl = `${window.location.origin}/groups?invite=${group.invite_code}`;
+          const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+          // Open WhatsApp share (web)
+          window.open(`https://wa.me/?text=${text}`, '_blank');
+        }}>Invitar amigos</button>
+      </div>
+
       <div className="mt-6 flex gap-2">
         <button className="btn-ghost" onClick={() => { window.location.href = "/groups"; }}>Volver a Grupos</button>
         <button className="btn" onClick={() => { localStorage.setItem("contextSelector", JSON.stringify({ type: "group", groupId: group.id })); window.location.href = "/rankings"; }}>Ir al ranking del grupo</button>

@@ -28,6 +28,9 @@ export default function ContextSelector({
   const [groups, setGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
   const [showListDialog, setShowListDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -43,15 +46,16 @@ export default function ContextSelector({
       ? "BCN"
       : groups.find((g) => g.id === value.groupId)?.name || "BCN";
 
-  const handleCreate = async () => {
+  const handleCreate = async (name?: string) => {
+    setCreating(true);
     try {
-      const res = await fetch(`/api/stripe/create-checkout-session`, { method: "POST", credentials: "include" });
+      const res = await fetch(`/api/stripe/create-checkout-session`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name || createName }) });
       if (!res.ok) throw new Error("No se pudo crear la sesión");
       const { url } = await res.json();
       window.location.href = url;
     } catch (e) {
       alert("Error creando sesión de pago.");
-    }
+    } finally { setCreating(false); }
   };
 
   return (
@@ -65,7 +69,7 @@ export default function ContextSelector({
         <DropdownMenuContent className="z-[99999]">
           <DropdownMenuItem onSelect={() => setShowListDialog(true)}>Ver grupos</DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setShowJoinDialog(true)}>Entrar grupo</DropdownMenuItem>
-          <DropdownMenuItem onSelect={handleCreate}>Crear grupo (Pago)</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setShowCreateDialog(true)}>Crear grupo (Pago)</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -87,8 +91,8 @@ export default function ContextSelector({
               </div>
             </div>
 
-            {groups.length === 0 && <div className="text-sm text-muted-foreground">No estás en ningún grupo</div>}
-            {groups.map((g) => (
+            {groups.filter(g => g.name && g.name.trim().length > 0).length === 0 && <div className="text-sm text-muted-foreground">No estás en ningún grupo</div>}
+            {groups.filter(g => g.name && g.name.trim().length > 0).map((g) => (
               <div key={g.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{g.name}</div>
@@ -112,6 +116,25 @@ export default function ContextSelector({
           </DialogHeader>
           <GroupModal onCreated={(groupId) => { onChange({ type: "group", groupId }); }} />
           <DialogFooter />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear grupo</DialogTitle>
+            <DialogDescription>Elige un nombre para tu grupo antes de pagar.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 w-full">
+            <div>
+              <label className="block text-sm font-medium">Nombre del grupo</label>
+              <input className="input w-full text-black mt-2" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" />
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={() => handleCreate(createName)} disabled={creating || createName.trim().length === 0}>{creating ? 'Redirigiendo…' : 'Pagar y crear grupo'}</Button>
+              <Button variant="ghost" onClick={() => setShowCreateDialog(false)}>Cancelar</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

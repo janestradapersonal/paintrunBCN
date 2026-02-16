@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 
 export default function GroupModal({ onCreated }: { onCreated?: (groupId: string) => void }) {
   const [inviteCode, setInviteCode] = useState("");
+  const [groupName, setGroupName] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -33,11 +34,17 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
   };
 
   const create = async () => {
+    if (!groupName.trim()) {
+      alert("Introduce un nombre para el grupo antes de crear.");
+      return;
+    }
     setCreating(true);
     try {
       const res = await fetch(`/api/stripe/create-checkout-session`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: groupName.trim() }),
       });
       if (!res.ok) throw new Error("No se pudo crear la sesión");
       const { url } = await res.json();
@@ -60,7 +67,12 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
 
       <div className="border-t pt-4">
         <div className="mb-2">¿Quieres crear un grupo privado para tus colegas?</div>
-        <Button onClick={create} disabled={creating}>{creating ? "Redirigiendo…" : "Crear grupo (pago)"}</Button>
+        <div className="space-y-2">
+          <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Nombre del grupo" className="text-black" />
+          <div className="flex gap-2">
+            <Button onClick={create} disabled={creating || !groupName.trim()}>{creating ? "Redirigiendo…" : "Crear grupo (pago)"}</Button>
+          </div>
+        </div>
       </div>
     </div>
   );
