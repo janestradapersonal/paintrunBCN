@@ -76,6 +76,17 @@ export default function ContextSelector({
             <DialogDescription>Lista de grupos en los que estás activo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 mt-2">
+            {/* Static Barcelona entry: competir contra toda BCN */}
+            <div className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
+              <div className="min-w-0">
+                <div className="font-medium">Barcelona</div>
+                <div className="text-[12px] text-muted-foreground">Competir contra toda Barcelona</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => { onChange({ type: "world" }); setShowListDialog(false); }}>Entrar</Button>
+              </div>
+            </div>
+
             {groups.length === 0 && <div className="text-sm text-muted-foreground">No estás en ningún grupo</div>}
             {groups.map((g) => (
               <div key={g.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
