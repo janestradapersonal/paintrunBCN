@@ -309,9 +309,10 @@ export async function registerRoutes(
 
   app.get("/api/rankings", async (req: Request, res: Response) => {
     const monthKey = req.query.month as string | undefined;
-    
+    const groupId = req.query.groupId as string | undefined;
+
     if (monthKey) {
-      const rankings = await storage.getMonthlyGlobalRankings(monthKey);
+      const rankings = await storage.getMonthlyGlobalRankings(monthKey, groupId);
       return res.json(rankings);
     }
 
@@ -328,14 +329,16 @@ export async function registerRoutes(
 
   app.get("/api/rankings/neighborhoods", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
-    const rankings = await storage.getMonthlyNeighborhoodRankings(monthKey);
+    const groupId = req.query.groupId as string | undefined;
+    const rankings = await storage.getMonthlyNeighborhoodRankings(monthKey, groupId);
     return res.json(rankings);
   });
 
   app.get("/api/rankings/neighborhoods/:name", async (req: Request, res: Response) => {
     const monthKey = (req.query.month as string) || getMonthKey();
     const name = req.params.name as string;
-    const leaderboard = await storage.getNeighborhoodLeaderboard(name, monthKey);
+    const groupId = req.query.groupId as string | undefined;
+    const leaderboard = await storage.getNeighborhoodLeaderboard(name, monthKey, groupId);
     return res.json(leaderboard);
   });
 
