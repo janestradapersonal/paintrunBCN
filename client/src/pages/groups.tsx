@@ -111,7 +111,17 @@ export default function GroupsPage() {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card p-4">
           <h3 className="font-semibold mb-2">Unirse a un grupo</h3>
-          <GroupModal onCreated={(id) => { /* redirect handled by modal */ }} />
+          <GroupModal onCreated={async (id) => {
+            try {
+              const r = await fetch('/api/groups/my', { credentials: 'include' });
+              if (r.ok) {
+                const data = await r.json();
+                const g = (data || []).find((x: any) => String(x.id) === String(id));
+                if (g) setCreatedGroup(g);
+                setGroups(data || []);
+              }
+            } catch (e) {}
+          }} />
         </div>
 
         <div className="card p-4">

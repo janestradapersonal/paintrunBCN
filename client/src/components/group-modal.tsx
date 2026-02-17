@@ -40,6 +40,16 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
     }
     setCreating(true);
     try {
+      // Capture current groups to detect the new group after checkout
+      let initialIds = new Set<string>();
+      try {
+        const rinit = await fetch(`/api/groups/my`, { credentials: "include" });
+        if (rinit.ok) {
+          const d0 = await rinit.json();
+          (d0 || []).forEach((g: any) => initialIds.add(String(g.id)));
+        }
+      } catch (e) {}
+
       const res = await fetch(`/api/stripe/create-checkout-session`, {
         method: "POST",
         credentials: "include",
@@ -48,7 +58,31 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       });
       if (!res.ok) throw new Error("No se pudo crear la sesión");
       const { url } = await res.json();
-      window.location.href = url;
+
+      // Open Stripe checkout in a new tab so the app remains open
+      const popup = window.open(url, '_blank');
+
+      // Poll /api/groups/my until a new group appears (max 90s)
+      let attempts = 0;
+      const maxAttempts = 45;
+      const iv = setInterval(async () => {
+        attempts++;
+        try {
+          const r = await fetch(`/api/groups/my`, { credentials: "include" });
+          if (!r.ok) return;
+          const data = await r.json();
+          const newly = (data || []).find((g: any) => !initialIds.has(String(g.id)));
+          if (newly) {
+            onCreated?.(newly.id || newly.id);
+            try { popup?.close(); } catch (e) {}
+            clearInterval(iv);
+            return;
+          }
+        } catch (e) {}
+        if (attempts >= maxAttempts) {
+          clearInterval(iv);
+        }
+      }, 2000);
     } catch (e) {
       alert("Error creando sesión de pago.");
     } finally { setCreating(false); }
