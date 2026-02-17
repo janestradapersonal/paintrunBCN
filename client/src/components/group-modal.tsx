@@ -26,7 +26,7 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       } else {
         const data = await res.json();
         onCreated?.(data.groupId);
-        window.location.href = `/groups/success?groupId=${encodeURIComponent(data.groupId)}`;
+        // Stay in-app; parent will handle navigation or UI update.
       }
     } catch (e: any) {
       setJoinError(e?.message || "Error");

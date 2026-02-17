@@ -13,6 +13,7 @@ export default function VerifyPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const email = params.get("email") || "";
+  const returnTo = params.get("returnTo") || "/";
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
   const [code, setCode] = useState("");
@@ -23,7 +24,7 @@ export default function VerifyPage() {
     try {
       await verify(email, code);
       toast({ title: "Email verificado", description: "Tu cuenta ha sido activada." });
-      navigate("/");
+      navigate(returnTo);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {

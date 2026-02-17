@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
+  const [createdGroup, setCreatedGroup] = useState<{ id: string; name?: string; invite_code: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -16,6 +17,44 @@ export default function GroupsPage() {
     };
     load();
 
+    // If we returned from Stripe checkout, Stripe appended ?session_id=... to the /groups URL.
+    // Poll for the newly-created group and show a created-group panel when detected.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      if (sessionId) {
+        // Capture initial ids to detect new group
+        const initial = new Set<string>();
+        try {
+          const r0 = await fetch(`/api/groups/my`, { credentials: "include" });
+          if (r0.ok) {
+            const d0 = await r0.json();
+            (d0 || []).forEach((g: any) => initial.add(String(g.id)));
+          }
+        } catch (e) {}
+
+        // Poll until a new group appears (max 15 attempts)
+        for (let i = 0; i < 15 && mounted; i++) {
+          try {
+            await new Promise((res) => setTimeout(res, 1500));
+            const r = await fetch(`/api/groups/my`, { credentials: "include" });
+            if (!r.ok) continue;
+            const data = await r.json();
+            if (mounted) setGroups(data || []);
+            const newly = (data || []).find((g: any) => !initial.has(String(g.id)));
+            if (newly) {
+              setCreatedGroup(newly);
+              // remove session_id param from URL
+              const u = new URL(window.location.href);
+              u.searchParams.delete('session_id');
+              window.history.replaceState({}, '', u.toString());
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+
     // If there is an invite code in the URL, auto-join
     try {
       const params = new URLSearchParams(window.location.search);
@@ -24,6 +63,12 @@ export default function GroupsPage() {
         (async () => {
           try {
             const r = await fetch(`/api/groups/join`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ inviteCode: invite }) });
+            // If the user is not authenticated, redirect to login preserving current URL
+            if (r.status === 401) {
+              const returnTo = window.location.pathname + window.location.search;
+              window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+              return;
+            }
             if (r.ok) {
               const data = await r.json();
               // data.group contains the joined group
@@ -31,7 +76,7 @@ export default function GroupsPage() {
               // set context and go to rankings
               if (data.group && data.group.id) {
                 localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: data.group.id }));
-                window.location.href = '/rankings';
+                // Stay on the groups page so the user sees the group in "Ver grupos"
               }
             }
           } catch (e) {}
@@ -43,6 +88,22 @@ export default function GroupsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      {createdGroup && (
+        <div className="card p-4 mb-6 border-green-400 bg-green-50">
+          <h3 className="text-lg font-semibold">Grupo {createdGroup.name || ''} creado</h3>
+          <p className="text-sm text-muted-foreground mb-3">Código: <strong>{createdGroup.invite_code}</strong></p>
+          <div className="flex gap-2">
+            <button className="btn" onClick={() => {
+              const shareUrl = `${window.location.origin}/groups?invite=${createdGroup.invite_code}`;
+              const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+              window.open(`https://wa.me/?text=${text}`, '_blank');
+            }}>Invitar gente</button>
+            <button className="btn-ghost" onClick={() => {
+              setCreatedGroup(null);
+            }}>Seguir en la web</button>
+          </div>
+        </div>
+      )}
       <h2 className="text-2xl font-bold mb-4">Grupos</h2>
 
       <div className="grid md:grid-cols-2 gap-6">

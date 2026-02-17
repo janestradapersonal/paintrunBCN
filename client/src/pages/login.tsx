@@ -20,6 +20,11 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
 
+  // Preserve optional returnTo param to redirect after login
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const searchParams = new URLSearchParams(search);
+  const returnTo = searchParams.get('returnTo') || '/';
+
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -29,7 +34,7 @@ export default function LoginPage() {
     setIsPending(true);
     try {
       await login(values.email, values.password);
-      navigate("/");
+      navigate(returnTo);
     } catch (error: any) {
       toast({
         title: "Error",

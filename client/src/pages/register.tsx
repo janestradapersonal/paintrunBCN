@@ -20,6 +20,11 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
 
+  // Preserve optional returnTo param so we can continue after verification
+  const search = typeof window !== 'undefined' ? window.location.search : '';
+  const searchParams = new URLSearchParams(search);
+  const returnTo = searchParams.get('returnTo') || '';
+
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email: "", username: "", password: "" },
@@ -39,7 +44,9 @@ export default function RegisterPage() {
           description: `Tu código es: ${result.verificationCode}`,
         });
       }
-      navigate(`/verify?email=${encodeURIComponent(values.email)}`);
+      // Pass returnTo through to the verify page
+      const verifyPath = `/verify?email=${encodeURIComponent(values.email)}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`;
+      navigate(verifyPath);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -116,7 +123,7 @@ export default function RegisterPage() {
             </Form>
             <p className="text-center text-sm text-muted-foreground mt-4">
               ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-primary font-medium" data-testid="link-login">
+              <Link href={`/login${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-primary font-medium" data-testid="link-login">
                 Inicia sesión
               </Link>
             </p>

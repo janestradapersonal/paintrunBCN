@@ -30,7 +30,7 @@ export async function createCheckoutSessionHandler(req: Request, res: Response) 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: STRIPE_GROUP_PRICE_ID, quantity: 1 }],
-      success_url: `${APP_URL}/groups/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${APP_URL}/groups?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/groups`,
       metadata: { userId, name: name || "" },
     });
