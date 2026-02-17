@@ -19,41 +19,43 @@ export default function GroupsPage() {
 
     // If we returned from Stripe checkout, Stripe appended ?session_id=... to the /groups URL.
     // Poll for the newly-created group and show a created-group panel when detected.
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const sessionId = params.get("session_id");
-      if (sessionId) {
-        // Capture initial ids to detect new group
-        const initial = new Set<string>();
-        try {
-          const r0 = await fetch(`/api/groups/my`, { credentials: "include" });
-          if (r0.ok) {
-            const d0 = await r0.json();
-            (d0 || []).forEach((g: any) => initial.add(String(g.id)));
-          }
-        } catch (e) {}
-
-        // Poll until a new group appears (max 15 attempts)
-        for (let i = 0; i < 15 && mounted; i++) {
+    (async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get("session_id");
+        if (sessionId) {
+          // Capture initial ids to detect new group
+          const initial = new Set<string>();
           try {
-            await new Promise((res) => setTimeout(res, 1500));
-            const r = await fetch(`/api/groups/my`, { credentials: "include" });
-            if (!r.ok) continue;
-            const data = await r.json();
-            if (mounted) setGroups(data || []);
-            const newly = (data || []).find((g: any) => !initial.has(String(g.id)));
-            if (newly) {
-              setCreatedGroup(newly);
-              // remove session_id param from URL
-              const u = new URL(window.location.href);
-              u.searchParams.delete('session_id');
-              window.history.replaceState({}, '', u.toString());
-              break;
+            const r0 = await fetch(`/api/groups/my`, { credentials: "include" });
+            if (r0.ok) {
+              const d0 = await r0.json();
+              (d0 || []).forEach((g: any) => initial.add(String(g.id)));
             }
           } catch (e) {}
+
+          // Poll until a new group appears (max 15 attempts)
+          for (let i = 0; i < 15 && mounted; i++) {
+            try {
+              await new Promise((res) => setTimeout(res, 1500));
+              const r = await fetch(`/api/groups/my`, { credentials: "include" });
+              if (!r.ok) continue;
+              const data = await r.json();
+              if (mounted) setGroups(data || []);
+              const newly = (data || []).find((g: any) => !initial.has(String(g.id)));
+              if (newly) {
+                setCreatedGroup(newly);
+                // remove session_id param from URL
+                const u = new URL(window.location.href);
+                u.searchParams.delete('session_id');
+                window.history.replaceState({}, '', u.toString());
+                break;
+              }
+            } catch (e) {}
+          }
         }
-      }
-    } catch (e) {}
+      } catch (e) {}
+    })();
 
     // If there is an invite code in the URL, auto-join
     try {
