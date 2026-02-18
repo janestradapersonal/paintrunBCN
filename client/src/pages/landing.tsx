@@ -189,7 +189,7 @@ function DashboardView() {
             <button
               className="inline-flex h-8 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium"
               onClick={() => {
-                const shareUrl = `${window.location.origin}/groups?invite=${encodeURIComponent(createdGroup.invite_code)}`;
+                const shareUrl = `${window.location.origin}/login?invite=${encodeURIComponent(createdGroup.invite_code)}`;
                 const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
                 window.open(`https://wa.me/?text=${text}`, '_blank');
               }}
@@ -402,7 +402,7 @@ function DashboardView() {
                   </div>
                     <div className="flex flex-col items-end gap-2">
                     <button className="btn" onClick={() => {
-                      const shareUrl = `${window.location.origin}/groups?invite=${encodeURIComponent(createdGroup.invite_code)}`;
+                      const shareUrl = `${window.location.origin}/login?invite=${encodeURIComponent(createdGroup.invite_code)}`;
                       const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
                       window.open(`https://wa.me/?text=${text}`, '_blank');
                     }}>Invitar a gente</button>

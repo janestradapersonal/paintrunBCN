@@ -12,7 +12,6 @@ import VerifyPage from "@/pages/verify";
 import DashboardPage from "@/pages/dashboard";
 import RankingsPage from "@/pages/rankings";
 import GroupsPage from "@/pages/groups";
-import GroupSuccessPage from "@/pages/groups/success";
 import ProfilePage from "@/pages/profile";
 import NotFound from "@/pages/not-found";
 
@@ -26,7 +25,6 @@ function Router() {
       <Route path="/dashboard" component={DashboardPage} />
       <Route path="/rankings" component={RankingsPage} />
       <Route path="/groups" component={GroupsPage} />
-      <Route path="/groups/success" component={GroupSuccessPage} />
       <Route path="/profile/:userId" component={ProfilePage} />
       <Route component={NotFound} />
     </Switch>
