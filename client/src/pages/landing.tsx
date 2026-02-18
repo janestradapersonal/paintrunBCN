@@ -143,6 +143,19 @@ function DashboardView() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // If the landing URL has a session_id param from Stripe, mark awaiting flag
+      try {
+        const params0 = new URLSearchParams(window.location.search);
+        const sessionIdParam = params0.get('session_id');
+        if (sessionIdParam) {
+          try { localStorage.setItem('awaitingGroupCreation', JSON.stringify({ sessionId: sessionIdParam, ts: Date.now() })); } catch (e) {}
+          // remove session_id from URL
+          params0.delete('session_id');
+          const newUrl = window.location.pathname + (params0.toString() ? `?${params0.toString()}` : '');
+          try { window.history.replaceState({}, '', newUrl); } catch (e) {}
+        }
+      } catch (e) {}
+
       try {
         const raw = localStorage.getItem('awaitingGroupCreation');
         if (!raw) return;
