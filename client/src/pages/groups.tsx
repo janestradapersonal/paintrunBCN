@@ -44,11 +44,15 @@ export default function GroupsPage() {
               if (mounted) setGroups(data || []);
               const newly = (data || []).find((g: any) => !initial.has(String(g.id)));
               if (newly) {
-                setCreatedGroup(newly);
-                // remove session_id param from URL
+                // store created group to show a panel on the main page, then go to /
+                try {
+                  localStorage.setItem('createdGroup', JSON.stringify(newly));
+                } catch (e) {}
+                // remove session_id param from URL then redirect to home so user sees panel there
                 const u = new URL(window.location.href);
                 u.searchParams.delete('session_id');
-                window.history.replaceState({}, '', u.toString());
+                try { window.history.replaceState({}, '', u.toString()); } catch (e) {}
+                window.location.href = '/';
                 break;
               }
             } catch (e) {}

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -122,6 +122,21 @@ function DashboardView() {
   const { data: profile } = useQuery<{ totalAreaSqMeters: number; rank: number; titles: MonthlyTitle[] }>({
     queryKey: ["/api/users/me/stats"],
   });
+
+  const [createdGroup, setCreatedGroup] = useState<{ id: string; name?: string; invite_code: string } | null>(null);
+
+  // On mount, read any createdGroup placed by /groups after checkout
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('createdGroup');
+      if (raw) {
+        const obj = JSON.parse(raw);
+        setCreatedGroup(obj);
+        // remove to avoid showing again later
+        localStorage.removeItem('createdGroup');
+      }
+    } catch (e) {}
+  }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -311,6 +326,28 @@ function DashboardView() {
         <MobilePanelToggle mode={panelMode} onToggle={setPanelMode} />
 
         <main className={`relative lg:flex-1 shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).main}`}>
+          {/* If user just created a group, show a small panel with invite */}
+          {createdGroup && (
+            <div className="absolute z-50 left-4 top-4">
+              <div className="card p-4 border-green-400 bg-green-50 shadow-lg max-w-sm">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Grupo {createdGroup.name || ''} creado</h3>
+                    <p className="text-sm text-muted-foreground mt-1">Código: <strong>{createdGroup.invite_code}</strong></p>
+                    <p className="text-sm mt-2">No dudes en invitar a tus amigos para competir</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <button className="btn" onClick={() => {
+                      const shareUrl = `${window.location.origin}/groups?invite=${encodeURIComponent(createdGroup.invite_code)}`;
+                      const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                      window.open(`https://wa.me/?text=${text}`, '_blank');
+                    }}>Invitar</button>
+                    <button className="btn-ghost" onClick={() => setCreatedGroup(null)}>Seguir en la web</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           <BarcelonaMap
             activities={activities}
             className="w-full h-full"
