@@ -24,39 +24,15 @@ export default function GroupsPage() {
         const params = new URLSearchParams(window.location.search);
         const sessionId = params.get("session_id");
         if (sessionId) {
-          // Capture initial ids to detect new group
-          const initial = new Set<string>();
+          // Mark that a group creation is pending (Stripe return). Redirect immediately
           try {
-            const r0 = await fetch(`/api/groups/my`, { credentials: "include" });
-            if (r0.ok) {
-              const d0 = await r0.json();
-              (d0 || []).forEach((g: any) => initial.add(String(g.id)));
-            }
+            localStorage.setItem('awaitingGroupCreation', JSON.stringify({ sessionId, ts: Date.now() }));
           } catch (e) {}
-
-          // Poll until a new group appears (max 15 attempts)
-          for (let i = 0; i < 15 && mounted; i++) {
-            try {
-              await new Promise((res) => setTimeout(res, 1500));
-              const r = await fetch(`/api/groups/my`, { credentials: "include" });
-              if (!r.ok) continue;
-              const data = await r.json();
-              if (mounted) setGroups(data || []);
-              const newly = (data || []).find((g: any) => !initial.has(String(g.id)));
-              if (newly) {
-                // store created group to show a panel on the main page, then go to /
-                try {
-                  localStorage.setItem('createdGroup', JSON.stringify(newly));
-                } catch (e) {}
-                // remove session_id param from URL then redirect to home so user sees panel there
-                const u = new URL(window.location.href);
-                u.searchParams.delete('session_id');
-                try { window.history.replaceState({}, '', u.toString()); } catch (e) {}
-                window.location.href = '/';
-                break;
-              }
-            } catch (e) {}
-          }
+          const u = new URL(window.location.href);
+          u.searchParams.delete('session_id');
+          try { window.history.replaceState({}, '', u.toString()); } catch (e) {}
+          window.location.href = '/';
+          return;
         }
       } catch (e) {}
     })();

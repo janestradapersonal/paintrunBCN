@@ -138,6 +138,44 @@ function DashboardView() {
     } catch (e) {}
   }, []);
 
+  // If Stripe redirected back earlier and group creation is pending, poll /api/groups/my
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const raw = localStorage.getItem('awaitingGroupCreation');
+        if (!raw) return;
+        let parsed: any = null;
+        try { parsed = JSON.parse(raw); } catch (e) { parsed = { sessionId: raw }; }
+
+        // capture current group ids
+        const initialRes = await fetch('/api/groups/my', { credentials: 'include' });
+        let initialIds = new Set<string>();
+        if (initialRes.ok) {
+          const d0 = await initialRes.json();
+          (d0 || []).forEach((g: any) => initialIds.add(String(g.id)));
+        }
+
+        const maxAttempts = 45; // ~90s
+        for (let i = 0; i < maxAttempts && mounted; i++) {
+          try {
+            await new Promise((res) => setTimeout(res, 2000));
+            const r = await fetch('/api/groups/my', { credentials: 'include' });
+            if (!r.ok) continue;
+            const data = await r.json();
+            const newly = (data || []).find((g: any) => !initialIds.has(String(g.id)));
+            if (newly) {
+              setCreatedGroup(newly);
+              try { localStorage.removeItem('awaitingGroupCreation'); } catch (e) {}
+              break;
+            }
+          } catch (e) {}
+        }
+      } catch (e) {}
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
