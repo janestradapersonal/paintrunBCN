@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
 import { Button } from "@/components/ui/button";
+import { ToastAction } from "@/components/ui/toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -175,6 +176,31 @@ function DashboardView() {
     })();
     return () => { mounted = false; };
   }, []);
+
+  // Show a toast notification when a createdGroup appears
+  useEffect(() => {
+    if (!createdGroup) return;
+    try {
+      toast({
+        title: `¡Enhorabuena! Acabas de crear el grupo ${createdGroup.name || ''}`,
+        description: "Ahora puedes invitar a tus amigos para competir juntos",
+        action: (
+          <ToastAction asChild>
+            <button
+              className="inline-flex h-8 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium"
+              onClick={() => {
+                const shareUrl = `${window.location.origin}/groups?invite=${encodeURIComponent(createdGroup.invite_code)}`;
+                const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+              }}
+            >
+              Invitar a gente
+            </button>
+          </ToastAction>
+        ),
+      });
+    } catch (e) {}
+  }, [createdGroup]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -372,15 +398,15 @@ function DashboardView() {
                   <div>
                     <h3 className="text-lg font-semibold">Grupo {createdGroup.name || ''} creado</h3>
                     <p className="text-sm text-muted-foreground mt-1">Código: <strong>{createdGroup.invite_code}</strong></p>
-                    <p className="text-sm mt-2">No dudes en invitar a tus amigos para competir</p>
+                    <p className="text-sm mt-2">Ahora puedes invitar a tus amigos para competir juntos</p>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex flex-col items-end gap-2">
                     <button className="btn" onClick={() => {
                       const shareUrl = `${window.location.origin}/groups?invite=${encodeURIComponent(createdGroup.invite_code)}`;
                       const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
                       window.open(`https://wa.me/?text=${text}`, '_blank');
-                    }}>Invitar</button>
-                    <button className="btn-ghost" onClick={() => setCreatedGroup(null)}>Seguir en la web</button>
+                    }}>Invitar a gente</button>
+                    <button className="btn-ghost" onClick={() => setCreatedGroup(null)}>Más tarde</button>
                   </div>
                 </div>
               </div>
