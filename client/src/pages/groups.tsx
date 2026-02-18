@@ -137,7 +137,14 @@ export default function GroupsPage() {
                     <div className="text-xs text-muted-foreground">Código: {g.invite_code}</div>
                   </div>
                   <div>
-                    <Button variant="ghost" size="sm" onClick={() => { localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: g.id })); window.location.href = '/rankings'; }}>Seleccionar</Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        const shareUrl = `${window.location.origin}/groups?invite=${g.invite_code}`;
+                        const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                        window.open(`https://wa.me/?text=${text}`, '_blank');
+                      }}>Invitar</Button>
+                      <Button variant="ghost" size="sm" onClick={() => { localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: g.id })); window.location.href = '/rankings'; }}>Seleccionar</Button>
+                    </div>
                   </div>
                 </li>
               ))}
