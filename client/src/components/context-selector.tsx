@@ -99,6 +99,11 @@ export default function ContextSelector({
                   <div className="text-[12px] text-muted-foreground">Código: {g.invite_code}</div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => {
+                    const shareUrl = `${window.location.origin}/groups?invite=${g.invite_code}`;
+                    const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  }}>Invitar</Button>
                   <Button size="sm" onClick={() => { onChange({ type: "group", groupId: g.id }); setShowListDialog(false); }}>Entrar</Button>
                 </div>
               </div>
