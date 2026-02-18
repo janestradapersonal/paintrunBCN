@@ -24,6 +24,7 @@ export default function RegisterPage() {
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const searchParams = new URLSearchParams(search);
   const returnTo = searchParams.get('returnTo') || '';
+  const invite = searchParams.get('invite') || '';
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -45,7 +46,7 @@ export default function RegisterPage() {
         });
       }
       // Pass returnTo through to the verify page
-      const verifyPath = `/verify?email=${encodeURIComponent(values.email)}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}`;
+      const verifyPath = `/verify?email=${encodeURIComponent(values.email)}${returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : ''}${invite ? `&invite=${encodeURIComponent(invite)}` : ''}`;
       navigate(verifyPath);
     } catch (error: any) {
       toast({

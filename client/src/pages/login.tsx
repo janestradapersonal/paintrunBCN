@@ -24,6 +24,7 @@ export default function LoginPage() {
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const searchParams = new URLSearchParams(search);
   const returnTo = searchParams.get('returnTo') || '/';
+  const invite = searchParams.get('invite') || '';
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -34,6 +35,13 @@ export default function LoginPage() {
     setIsPending(true);
     try {
       await login(values.email, values.password);
+      // If there's an invite code in the URL, try to join that group for the user,
+      // but keep the user on the normal post-login page (returnTo).
+      if (invite) {
+        try {
+          await fetch('/api/groups/join', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteCode: invite }) });
+        } catch (e) {}
+      }
       navigate(returnTo);
     } catch (error: any) {
       toast({
@@ -96,11 +104,17 @@ export default function LoginPage() {
                 </Button>
               </form>
             </Form>
-            <p className="text-center text-sm text-muted-foreground mt-4">
+              <p className="text-center text-sm text-muted-foreground mt-4">
               ¿No tienes cuenta?{" "}
-                <Link href={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-primary font-medium" data-testid="link-register">
-                  Regístrate
-                </Link>
+              <Link href={(() => {
+                const p = new URLSearchParams();
+                if (returnTo && returnTo !== '/') p.set('returnTo', returnTo);
+                if (invite) p.set('invite', invite);
+                const qs = p.toString();
+                return `/register${qs ? `?${qs}` : ''}`;
+              })()} className="text-primary font-medium" data-testid="link-register">
+                Regístrate
+              </Link>
             </p>
           </CardContent>
         </Card>

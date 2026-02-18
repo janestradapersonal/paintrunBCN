@@ -24,6 +24,15 @@ export default function VerifyPage() {
     try {
       await verify(email, code);
       toast({ title: "Email verificado", description: "Tu cuenta ha sido activada." });
+      // If there is an invite param, try to join the group for this newly-verified user,
+      // then navigate to returnTo (default '/'). Do not redirect to /groups.
+      try {
+        const params = new URLSearchParams(search);
+        const invite = params.get('invite');
+        if (invite) {
+          await fetch('/api/groups/join', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteCode: invite }) });
+        }
+      } catch (e) {}
       navigate(returnTo);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
