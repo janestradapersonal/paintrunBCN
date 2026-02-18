@@ -181,22 +181,35 @@ function DashboardView() {
   useEffect(() => {
     if (!createdGroup) return;
     try {
-      toast({
+      let t: any = null;
+      t = toast({
         title: `¡Enhorabuena! Acabas de crear el grupo ${createdGroup.name || ''}`,
         description: "Ahora puedes invitar a tus amigos para competir juntos",
         action: (
-          <ToastAction asChild>
+          <div className="flex items-center gap-2">
+            <ToastAction asChild>
+              <button
+                className="inline-flex h-8 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium"
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/login?invite=${encodeURIComponent(createdGroup.invite_code)}`;
+                  const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                  window.open(`https://wa.me/?text=${text}`, '_blank');
+                  try { t?.dismiss(); } catch (e) {}
+                }}
+              >
+                Invitar a gente
+              </button>
+            </ToastAction>
             <button
               className="inline-flex h-8 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium"
               onClick={() => {
-                const shareUrl = `${window.location.origin}/login?invite=${encodeURIComponent(createdGroup.invite_code)}`;
-                const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
-                window.open(`https://wa.me/?text=${text}`, '_blank');
+                try { t?.dismiss(); } catch (e) {}
+                setCreatedGroup(null);
               }}
             >
-              Invitar a gente
+              Más tarde
             </button>
-          </ToastAction>
+          </div>
         ),
       });
     } catch (e) {}
