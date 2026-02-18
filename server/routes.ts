@@ -109,6 +109,13 @@ export async function registerRoutes(
   // Group endpoints
   app.get("/api/groups/my", getMyGroupsHandler);
   app.post("/api/groups/join", joinGroupHandler);
+  app.post("/api/groups/leave", (req, res, next) => {
+    // lazy-import handler to avoid circular issues
+    return (async () => {
+      const { leaveGroupHandler } = await import('./groups');
+      return leaveGroupHandler(req, res, next);
+    })().catch(next);
+  });
   app.post("/api/groups/:id/name", setGroupNameHandler);
 
   app.post("/api/auth/register", async (req: Request, res: Response) => {

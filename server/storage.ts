@@ -650,6 +650,10 @@ export class DatabaseStorage implements IStorage {
     await db.execute(sql`INSERT INTO group_members (group_id, user_id, role, created_at) VALUES (${groupId}, ${userId}, ${role}, NOW()) ON CONFLICT DO NOTHING`);
   }
 
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    await db.execute(sql`DELETE FROM group_members WHERE group_id = ${groupId} AND user_id = ${userId}`);
+  }
+
   async getGroupsForUser(userId: string): Promise<any[]> {
     const q = await db.execute(sql`SELECT g.id, g.name, g.invite_code, gm.role, g.status, g.created_at FROM groups g JOIN group_members gm ON gm.group_id = g.id WHERE gm.user_id = ${userId} ORDER BY g.created_at DESC`);
     return q.rows || [];

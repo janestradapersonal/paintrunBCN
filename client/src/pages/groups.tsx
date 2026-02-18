@@ -144,6 +144,27 @@ export default function GroupsPage() {
                         window.open(`https://wa.me/?text=${text}`, '_blank');
                       }}>Invitar</Button>
                       <Button variant="ghost" size="sm" onClick={() => { localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: g.id })); window.location.href = '/rankings'; }}>Seleccionar</Button>
+                      <Button variant="ghost" size="sm" onClick={async () => {
+                        if (!confirm(`¿Seguro que quieres salir del grupo ${g.name}?`)) return;
+                        try {
+                          const r = await fetch('/api/groups/leave', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId: g.id }) });
+                          if (r.ok) {
+                            const data = await r.json();
+                            setGroups(data.groups || groups.filter(x => x.id !== g.id));
+                            // clear context if it referenced this group
+                            try {
+                              const cs = JSON.parse(localStorage.getItem('contextSelector') || 'null');
+                              if (cs && cs.type === 'group' && cs.groupId === g.id) {
+                                localStorage.removeItem('contextSelector');
+                              }
+                            } catch (e) {}
+                          } else {
+                            alert('No se pudo salir del grupo');
+                          }
+                        } catch (e) {
+                          alert('Error al salir del grupo');
+                        }
+                      }}>Salir</Button>
                     </div>
                   </div>
                 </li>

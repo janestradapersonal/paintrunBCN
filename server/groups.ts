@@ -53,3 +53,20 @@ export async function setGroupNameHandler(req: Request, res: Response) {
     return res.status(500).json({ message: "Error actualizando nombre" });
   }
 }
+
+export async function leaveGroupHandler(req: Request, res: Response) {
+  const userId = req.session?.userId as string | undefined;
+  if (!userId) return res.status(401).json({ message: "No autorizado" });
+
+  const { groupId } = req.body || {};
+  if (!groupId || typeof groupId !== 'string') return res.status(400).json({ message: 'groupId required' });
+
+  try {
+    await storage.removeGroupMember(groupId, userId);
+    const groups = await storage.getGroupsForUser(userId);
+    return res.json({ success: true, groups });
+  } catch (err: any) {
+    console.error('[Groups] leaveGroup error:', err?.message || err);
+    return res.status(500).json({ message: 'Error saliendo del grupo' });
+  }
+}
