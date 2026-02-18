@@ -98,9 +98,9 @@ export default function LoginPage() {
             </Form>
             <p className="text-center text-sm text-muted-foreground mt-4">
               ¿No tienes cuenta?{" "}
-              <Link href="/register" className="text-primary font-medium" data-testid="link-register">
-                Regístrate
-              </Link>
+                <Link href={`/register${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`} className="text-primary font-medium" data-testid="link-register">
+                  Regístrate
+                </Link>
             </p>
           </CardContent>
         </Card>

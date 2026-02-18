@@ -94,9 +94,10 @@ export default function GroupsPage() {
         <div className="card p-4 mb-6 border-green-400 bg-green-50">
           <h3 className="text-lg font-semibold">Grupo {createdGroup.name || ''} creado</h3>
           <p className="text-sm text-muted-foreground mb-3">Código: <strong>{createdGroup.invite_code}</strong></p>
-          <div className="flex gap-2">
+            <div className="flex gap-2">
             <button className="btn" onClick={() => {
-              const shareUrl = `${window.location.origin}/groups?invite=${createdGroup.invite_code}`;
+              const returnPath = `/groups?invite=${createdGroup.invite_code}`;
+              const shareUrl = `${window.location.origin}/login?returnTo=${encodeURIComponent(returnPath)}`;
               const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
               window.open(`https://wa.me/?text=${text}`, '_blank');
             }}>Invitar gente</button>
@@ -139,7 +140,8 @@ export default function GroupsPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="sm" onClick={() => {
-                        const shareUrl = `${window.location.origin}/groups?invite=${g.invite_code}`;
+                        const returnPath = `/groups?invite=${g.invite_code}`;
+                        const shareUrl = `${window.location.origin}/login?returnTo=${encodeURIComponent(returnPath)}`;
                         const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
                         window.open(`https://wa.me/?text=${text}`, '_blank');
                       }}>Invitar</Button>
