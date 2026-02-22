@@ -12,7 +12,9 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
 
   const from = process.env.SENDGRID_FROM_EMAIL || "no-reply@localhost";
   try {
-    await sgMail.send({
+    const disableClickTracking = (process.env.DISABLE_SENDGRID_CLICK_TRACKING === 'true');
+
+    const msg: any = {
       to,
       from,
       subject: "Restablecer contraseña",
@@ -24,29 +26,21 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           </head>
           <body style="margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%;">
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%; background:#f6f6f6; padding:20px 0;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%; background:#f6f6f6; padding:12px 0;">
               <tr>
                 <td align="center">
-                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background:#ffffff; margin:0 auto; border-radius:6px; overflow:hidden;">
+                  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background:#ffffff; margin:0 auto; border-radius:6px;">
                     <tr>
-                      <td style="padding:24px; font-family: Arial, sans-serif; color:#111111;">
-                        <h2 style="margin:0 0 12px 0; color:#0b74de; font-size:20px;">Restablecer contraseña</h2>
-                        <p style="margin:0 0 16px 0; font-size:14px; line-height:1.5;">Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>
-                        <p style="margin:0 0 20px 0; font-size:14px; line-height:1.5;">Haz clic en el siguiente botón para establecer una nueva contraseña. Este enlace caduca en ${expiresMinutes} minutos.</p>
-                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto;">
+                      <td style="padding:16px; font-family: Arial, sans-serif; color:#111111; text-align:center;">
+                        <p style="margin:0 0 12px 0; font-size:15px;">Hemos recibido una solicitud para restablecer la contraseña de tu cuenta.</p>
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:12px auto;">
                           <tr>
                             <td style="text-align:center;">
-                              <!-- Button -->
-                              <a href="${resetUrl}"
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 style="background:#007bff; color:#ffffff !important; font-weight:bold; padding:15px 30px; text-decoration:none; display:inline-block !important; border-radius:5px; font-size:16px; min-width:200px; line-height:1.4; -webkit-text-size-adjust:100%; box-shadow:0 2px 5px rgba(0,0,0,0.2); mso-padding-alt:15px 30px;">
-                                Restablecer contraseña
-                              </a>
+                              <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="background:#007bff; color:#ffffff !important; font-weight:bold; padding:15px 30px; text-decoration:none; display:inline-block !important; border-radius:5px; font-size:16px; min-width:200px; line-height:1.4; -webkit-text-size-adjust:100%; mso-padding-alt:15px 30px;">Restablecer contraseña</a>
                             </td>
                           </tr>
                         </table>
-                        <p style="margin:20px 0 0 0; font-size:13px; color:#666666;">Si no solicitaste este cambio, puedes ignorar este correo.</p>
+                        <p style="margin:12px 0 0 0; font-size:13px; color:#666666; word-break:break-all;">Si el botón no funciona en tu cliente de correo, copia y pega este enlace en tu navegador:<br/><a href="${resetUrl}" style="color:#007bff; word-break:break-all;">${resetUrl}</a></p>
                       </td>
                     </tr>
                   </table>
@@ -56,8 +50,20 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
           </body>
         </html>
       `,
-    });
+    };
+
+    if (disableClickTracking) {
+      msg.tracking_settings = { click_tracking: { enable: false, enable_text: false }, open_tracking: { enable: false } };
+    }
+
+    // Plain text fallback
+    msg.text = `Restablece tu contraseña aquí: ${resetUrl}`;
+
+    await sgMail.send(msg);
     console.log(`[paintrunBCN] Sent password reset email to ${to}`);
+    if (process.env.SHOW_RESET_TOKEN === 'true') {
+      console.log(`[paintrunBCN] sent reset href: ${resetUrl}`);
+    }
     return true;
   } catch (err: any) {
     console.error(`[paintrunBCN] Failed sending password reset email to ${to}:`, err?.response?.body || err.message || err);
