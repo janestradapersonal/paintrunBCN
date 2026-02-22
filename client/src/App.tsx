@@ -9,6 +9,8 @@ import LandingPage from "@/pages/landing";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import VerifyPage from "@/pages/verify";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import DashboardPage from "@/pages/dashboard";
 import RankingsPage from "@/pages/rankings";
 import GroupsPage from "@/pages/groups";
@@ -20,6 +22,8 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
+      <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/verify" component={VerifyPage} />
       <Route path="/dashboard" component={DashboardPage} />
