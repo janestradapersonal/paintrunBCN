@@ -13,7 +13,6 @@ import sgMail from "@sendgrid/mail";
 import { registerStravaRoutes } from "./strava";
 import express from "express";
 import crypto from "crypto";
-const rateLimit = await import('express-rate-limit').then(m => m.default);
 import { passwordResetTokens, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { sendPasswordResetEmail } from "./services/emailService";
@@ -250,6 +249,7 @@ export async function registerRoutes(
   });
 
   // Rate limiter for forgot-password: 5 requests per hour per IP
+  const { default: rateLimit } = await import('express-rate-limit');
   const forgotLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 5,
