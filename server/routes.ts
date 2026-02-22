@@ -13,7 +13,7 @@ import sgMail from "@sendgrid/mail";
 import { registerStravaRoutes } from "./strava";
 import express from "express";
 import crypto from "crypto";
-import rateLimit from "express-rate-limit";
+const rateLimit = await import('express-rate-limit').then(m => m.default);
 import { passwordResetTokens, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { sendPasswordResetEmail } from "./services/emailService";
