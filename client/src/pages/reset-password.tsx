@@ -59,7 +59,7 @@ export default function ResetPasswordPage() {
             {message ? (
               <div className="p-4 text-center">{message}</div>
             ) : (
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pointer-events-auto" style={{ touchAction: 'manipulation' }}>
                 <div>
                   <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
                   <Input type="password" {...register('newPassword', { required: true, minLength: 6 })} />
@@ -68,7 +68,13 @@ export default function ResetPasswordPage() {
                   <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
                   <Input type="password" {...register('confirmPassword', { required: true, minLength: 6 })} />
                 </div>
-                <Button type="submit" className="w-full" disabled={isPending}>Cambiar contraseña</Button>
+                <Button
+                  type="submit"
+                  className="block w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg relative z-10"
+                  disabled={isPending}
+                >
+                  Cambiar contraseña
+                </Button>
               </form>
             )}
           </CardContent>

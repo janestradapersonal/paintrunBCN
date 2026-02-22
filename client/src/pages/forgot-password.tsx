@@ -50,7 +50,13 @@ export default function ForgotPasswordPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isPending}>Enviar</Button>
+                  <Button
+                    type="submit"
+                    className="block w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 shadow-lg relative z-10"
+                    disabled={isPending}
+                  >
+                    Enviar
+                  </Button>
                 </form>
               </Form>
             ) : (
