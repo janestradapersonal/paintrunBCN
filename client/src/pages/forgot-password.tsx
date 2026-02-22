@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  const { register, handleSubmit } = useForm<{ email: string }>({ defaultValues: { email: "" } });
+  const form = useForm<{ email: string }>({ defaultValues: { email: "" } });
 
   async function onSubmit(values: { email: string }) {
     setIsPending(true);
@@ -35,16 +35,16 @@ export default function ForgotPasswordPage() {
           </CardHeader>
           <CardContent>
             {!sent ? (
-              <Form>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
-                    control={undefined as any}
+                    control={form.control}
                     name="email"
-                    render={() => (
+                    render={({ field }) => (
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="tu@email.com" type="email" {...register('email', { required: true })} />
+                          <Input placeholder="tu@email.com" type="email" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
