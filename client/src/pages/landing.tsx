@@ -125,6 +125,7 @@ function DashboardView() {
   });
 
   const [createdGroup, setCreatedGroup] = useState<{ id: string; name?: string; invite_code: string } | null>(null);
+  const [awaitingCreation, setAwaitingCreation] = useState(false);
 
   // On mount, read any createdGroup placed by /groups after checkout
   useEffect(() => {
@@ -143,12 +144,28 @@ function DashboardView() {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // DEBUG: detect session_id on landing
+      try {
+        console.debug('[landing] checking URL for session_id...');
+        const params0 = new URLSearchParams(window.location.search);
+        const sessionIdParam = params0.get('session_id');
+        console.debug('[landing] session_id param:', sessionIdParam);
+        if (sessionIdParam) {
+          try { localStorage.setItem('awaitingGroupCreation', JSON.stringify({ sessionId: sessionIdParam, ts: Date.now() })); } catch (e) {}
+          setAwaitingCreation(true);
+          // remove session_id from URL
+          params0.delete('session_id');
+          const newUrl = window.location.pathname + (params0.toString() ? `?${params0.toString()}` : '');
+          try { window.history.replaceState({}, '', newUrl); } catch (e) {}
+        }
+      } catch (e) { console.debug('[landing] error checking session_id', e); }
       // If the landing URL has a session_id param from Stripe, mark awaiting flag
       try {
         const params0 = new URLSearchParams(window.location.search);
         const sessionIdParam = params0.get('session_id');
         if (sessionIdParam) {
           try { localStorage.setItem('awaitingGroupCreation', JSON.stringify({ sessionId: sessionIdParam, ts: Date.now() })); } catch (e) {}
+          setAwaitingCreation(true);
           // remove session_id from URL
           params0.delete('session_id');
           const newUrl = window.location.pathname + (params0.toString() ? `?${params0.toString()}` : '');
@@ -158,28 +175,35 @@ function DashboardView() {
 
       try {
         const raw = localStorage.getItem('awaitingGroupCreation');
+        console.debug('[landing] awaitingGroupCreation raw:', raw);
         if (!raw) return;
         let parsed: any = null;
         try { parsed = JSON.parse(raw); } catch (e) { parsed = { sessionId: raw }; }
 
         // capture current group ids
+        console.debug('[landing] fetching current groups for baseline...');
         const initialRes = await fetch('/api/groups/my', { credentials: 'include' });
         let initialIds = new Set<string>();
         if (initialRes.ok) {
           const d0 = await initialRes.json();
           (d0 || []).forEach((g: any) => initialIds.add(String(g.id)));
+          console.debug('[landing] initial group ids:', Array.from(initialIds));
         }
 
         const maxAttempts = 45; // ~90s
         for (let i = 0; i < maxAttempts && mounted; i++) {
           try {
+            console.debug('[landing] polling attempt', i + 1);
             await new Promise((res) => setTimeout(res, 2000));
             const r = await fetch('/api/groups/my', { credentials: 'include' });
             if (!r.ok) continue;
             const data = await r.json();
             const newly = (data || []).find((g: any) => !initialIds.has(String(g.id)));
+            console.debug('[landing] poll result length', (data || []).length, 'newly:', newly);
             if (newly) {
+              console.debug('[landing] detected newly created group:', newly);
               setCreatedGroup(newly);
+              setAwaitingCreation(false);
               try { localStorage.removeItem('awaitingGroupCreation'); } catch (e) {}
               break;
             }
@@ -193,6 +217,7 @@ function DashboardView() {
   // Show a toast notification when a createdGroup appears
   useEffect(() => {
     if (!createdGroup) return;
+    console.debug('[landing] createdGroup effect, createdGroup:', createdGroup);
     try {
       let t: any = null;
       t = toast({

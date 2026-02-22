@@ -116,6 +116,11 @@ export default function LoginPage() {
                 Regístrate
               </Link>
             </p>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              <Link href="/forgot-password" className="text-primary font-medium" data-testid="link-forgot">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

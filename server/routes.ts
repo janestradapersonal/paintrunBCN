@@ -12,6 +12,11 @@ import multer from "multer";
 import sgMail from "@sendgrid/mail";
 import { registerStravaRoutes } from "./strava";
 import express from "express";
+import crypto from "crypto";
+import rateLimit from "express-rate-limit";
+import { passwordResetTokens, users } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { sendPasswordResetEmail } from "./services/emailService";
 import { createCheckoutSessionHandler, stripeWebhookHandler } from "./stripe";
 import { getMyGroupsHandler, joinGroupHandler, setGroupNameHandler } from "./groups";
 
@@ -242,6 +247,91 @@ export async function registerRoutes(
     req.session.destroy(() => {
       res.json({ message: "Sesión cerrada" });
     });
+  });
+
+  // Rate limiter for forgot-password: 5 requests per hour per IP
+  const forgotLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/api/auth/forgot-password", forgotLimiter, async (req: Request, res: Response) => {
+    try {
+      const emailRaw = (req.body?.email || "").toString();
+      const email = emailRaw.trim().toLowerCase();
+
+      const user = await storage.getUserByEmail(email);
+
+      // Always respond with a generic message to avoid user enumeration
+      const genericMsg = { message: "Si existe una cuenta con ese correo, te enviaremos un enlace para restablecerla" };
+
+      if (!user) {
+        // still return generic message
+        return res.json(genericMsg);
+      }
+
+      // generate token
+      const rawToken = crypto.randomBytes(32).toString("base64url");
+      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+      const minutes = Number(process.env.PASSWORD_RESET_TOKEN_EXP_MINUTES || 15);
+      const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
+
+      // store hash in DB
+      await db.insert(passwordResetTokens).values({ userId: user.id, tokenHash, expiresAt }).returning();
+
+      const base = process.env.APP_BASE_URL || "http://localhost:3000";
+      const resetUrl = `${base}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+      // send email (best-effort)
+      try {
+        await sendPasswordResetEmail(user.email, resetUrl, minutes);
+      } catch (e) {
+        console.error("Error sending password reset email:", e);
+      }
+
+      return res.json(genericMsg);
+    } catch (error: any) {
+      console.error("Forgot-password error:", error);
+      return res.status(500).json({ message: "Error interno" });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
+    try {
+      const { token, newPassword } = req.body || {};
+      if (!token || typeof token !== "string" || !newPassword || typeof newPassword !== "string") {
+        return res.status(400).json({ error: "Token inválido o expirado" });
+      }
+
+      // Basic password policy: at least 6 chars (existing app uses 6)
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "La contraseña no cumple la política" });
+      }
+
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+      const [prt] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.tokenHash, tokenHash));
+
+      if (!prt) return res.status(400).json({ error: "Token inválido o expirado" });
+      if (prt.usedAt) return res.status(400).json({ error: "Token inválido o expirado" });
+      if (new Date(prt.expiresAt) < new Date()) return res.status(400).json({ error: "Token inválido o expirado" });
+
+      // hash new password
+      const newHash = await bcrypt.hash(newPassword, 10);
+
+      // update user password
+      await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, prt.userId));
+
+      // mark token used
+      await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, prt.id));
+
+      return res.json({ message: "Contraseña actualizada" });
+    } catch (error: any) {
+      console.error("Reset-password error:", error);
+      return res.status(500).json({ error: "Error interno" });
+    }
   });
 
   app.post("/api/activities/upload", requireAuth, upload.single("gpx"), async (req: Request, res: Response) => {
