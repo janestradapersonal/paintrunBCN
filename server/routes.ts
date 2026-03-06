@@ -341,10 +341,30 @@ export async function registerRoutes(
       }
 
       const gpxContent = req.file.buffer.toString("utf-8");
-      const { name, coordinates } = parseGPX(gpxContent);
+      const parsed = parseGPX(gpxContent) as { name: string; coordinates: number[][]; startDate?: string };
+      const name = parsed.name;
+      const coordinates = parsed.coordinates;
+      const startDateStr = parsed.startDate;
 
       if (coordinates.length < 2) {
         return res.status(400).json({ message: "El archivo GPX no contiene puntos de track válidos" });
+      }
+
+      // Ensure user exists and enforce date rules
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+
+      if (startDateStr) {
+        const startDate = new Date(startDateStr);
+        if (!isNaN(startDate.getTime())) {
+          if (startDate.getTime() <= new Date(user.createdAt).getTime()) {
+            return res.status(400).json({ message: "No puedes subir una actividad anterior a la creación de la cuenta" });
+          }
+          const existingByDate = await storage.getActivityByUploadedAt(req.session.userId!, startDate);
+          if (existingByDate) {
+            return res.status(400).json({ message: "Actividad duplicada (mismo inicio)" });
+          }
+        }
       }
 
       const distance = calculateDistance(coordinates);
@@ -353,6 +373,11 @@ export async function registerRoutes(
       const neighborhoodName = detectNeighborhood(coordinates);
       const monthKey = getMonthKey();
 
+      // Also check duplicate by exact coordinates
+      const coordDup = await storage.findActivityByCoordinates(req.session.userId!, coordinates);
+      if (coordDup) return res.status(400).json({ message: "Actividad duplicada" });
+
+      const uploadedAt = startDateStr ? new Date(startDateStr) : undefined;
       const activity = await storage.createActivity(
         req.session.userId!,
         name,
@@ -361,7 +386,8 @@ export async function registerRoutes(
         area,
         distance,
         neighborhoodName,
-        monthKey
+        monthKey,
+        uploadedAt
       );
 
       await storage.updateUserArea(req.session.userId!);

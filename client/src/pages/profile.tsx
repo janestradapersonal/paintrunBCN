@@ -225,6 +225,30 @@ export default function ProfilePage() {
     }
   };
 
+  const [uploadingGPX, setUploadingGPX] = useState(false);
+
+  const handleGPXUpload = async (file?: File) => {
+    if (!file) return;
+    setUploadingGPX(true);
+    try {
+      const fd = new FormData();
+      fd.append("gpx", file, file.name);
+      const res = await fetch("/api/activities/upload", { method: "POST", body: fd, credentials: "include" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Error al subir" }));
+        toast({ title: "Error", description: err.message || "No se pudo subir el GPX", variant: "destructive" });
+      } else {
+        toast({ title: "Actividad subida", description: "Tu GPX se ha procesado correctamente." });
+        qc.invalidateQueries({ queryKey: ["/api/users", userId, "activities"] });
+        qc.invalidateQueries({ queryKey: ["/api/users", userId, "profile"] });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "Error al subir GPX", variant: "destructive" });
+    } finally {
+      setUploadingGPX(false);
+    }
+  };
+
   const handleColorChange = async (color: string) => {
     setSavingColor(true);
     try {
@@ -467,6 +491,29 @@ export default function ProfilePage() {
                       </div>
                     </button>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+            {isOwnProfile && (
+              <Card>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ActivityIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs font-semibold">Subir GPX</span>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="file"
+                      accept=".gpx"
+                      onChange={(e) => handleGPXUpload(e.target.files ? e.target.files[0] : undefined)}
+                      className="text-sm"
+                      data-testid="input-gpx-upload"
+                    />
+                    <Button size="sm" onClick={() => { /* input triggers onChange */ }} disabled={uploadingGPX}>
+                      {uploadingGPX ? "Subiendo..." : "Subir"}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-2">Sube un archivo GPX desde tu ordenador. Se bloquearán actividades duplicadas o anteriores a tu creación de cuenta.</p>
                 </CardContent>
               </Card>
             )}

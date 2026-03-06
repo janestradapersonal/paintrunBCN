@@ -29,6 +29,8 @@ export interface IStorage {
   getActivitiesByUser(userId: string): Promise<Activity[]>;
   getActivitiesByUserAndMonth(userId: string, monthKey: string): Promise<Activity[]>;
   getActivity(id: string): Promise<Activity | undefined>;
+  getActivityByUploadedAt(userId: string, uploadedAt: Date | string): Promise<Activity | undefined>;
+  findActivityByCoordinates(userId: string, coordinates: number[][]): Promise<Activity | undefined>;
 
   getRankings(): Promise<(User & { rank: number })[]>;
   getMonthlyGlobalRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]>;
@@ -156,6 +158,19 @@ export class DatabaseStorage implements IStorage {
     return activity;
   }
 
+  async getActivityByUploadedAt(userId: string, uploadedAt: Date | string): Promise<Activity | undefined> {
+    const dt = typeof uploadedAt === "string" ? new Date(uploadedAt) : uploadedAt;
+    const [activity] = await db.select().from(activities).where(and(eq(activities.userId, userId), eq(activities.uploadedAt, dt)));
+    return activity;
+  }
+
+  async findActivityByCoordinates(userId: string, coordinates: number[][]): Promise<Activity | undefined> {
+    // Use raw SQL to compare jsonb equality for coordinates
+    const q = await db.execute(sql`SELECT * FROM activities WHERE user_id = ${userId} AND coordinates = ${JSON.stringify(coordinates)} LIMIT 1`);
+    const row = q.rows && q.rows[0];
+    return row || undefined;
+  }
+
   async getRankings(): Promise<(User & { rank: number })[]> {
     const allUsers = await db
       .select()
@@ -168,35 +183,29 @@ export class DatabaseStorage implements IStorage {
     // If groupId is provided, only include users who are members of that group.
     if (groupId) {
       const q = await db.execute(sql`
-        SELECT u.id as userId, u.username, COALESCE(SUM(a.area_sq_meters), 0) as totalArea
+        SELECT u.id as userId, u.username, COALESCE(SUM(a.area_sq_meters), 0) as totalArea, COALESCE(lp.points, 0) as points
         FROM users u
         JOIN group_members gm ON gm.user_id = u.id AND gm.group_id = ${groupId}
         LEFT JOIN activities a ON a.user_id = u.id AND a.month_key = ${monthKey}
-        GROUP BY u.id, u.username
-        ORDER BY COALESCE(SUM(a.area_sq_meters), 0) DESC, u.username ASC
+        LEFT JOIN live_points lp ON lp.user_id = u.id AND lp.month_key = ${monthKey}
+        GROUP BY u.id, u.username, lp.points
+        ORDER BY COALESCE(lp.points, 0) DESC, u.username ASC
       `);
       const rows = q.rows || [];
       return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), rank: i + 1 }));
     }
 
     // Include all users (even those without activities in the month) using LEFT JOIN.
-    const results = await db
-      .select({
-        userId: users.id,
-        username: users.username,
-        totalAreaSqMeters: sql<number>`COALESCE(SUM(${activities.areaSqMeters}), 0)`,
-      })
-      .from(users)
-      .leftJoin(activities, and(eq(activities.userId, users.id), eq(activities.monthKey, monthKey)))
-      .groupBy(users.id, users.username)
-      .orderBy(desc(sql`COALESCE(SUM(${activities.areaSqMeters}), 0)`), asc(users.username));
-
-    return results.map((r, i) => ({
-      userId: r.userId,
-      username: r.username,
-      totalAreaSqMeters: Number(r.totalAreaSqMeters),
-      rank: i + 1,
-    }));
+    const q = await db.execute(sql`
+      SELECT u.id as userId, u.username, COALESCE(SUM(a.area_sq_meters), 0) as totalArea, COALESCE(lp.points, 0) as points
+      FROM users u
+      LEFT JOIN activities a ON a.user_id = u.id AND a.month_key = ${monthKey}
+      LEFT JOIN live_points lp ON lp.user_id = u.id AND lp.month_key = ${monthKey}
+      GROUP BY u.id, u.username, lp.points
+      ORDER BY COALESCE(lp.points, 0) DESC, u.username ASC
+    `);
+    const rows = q.rows || [];
+    return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), rank: i + 1 }));
   }
 
   async getMonthlyNeighborhoodRankings(monthKey: string, groupId?: string): Promise<{ neighborhoodName: string; topUser: string; topUserId: string; totalAreaSqMeters: number; runnerCount: number }[]> {

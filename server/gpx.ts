@@ -77,6 +77,7 @@ export function getAllNeighborhoodNames(): string[] {
 export function parseGPX(xmlContent: string): {
   name: string;
   coordinates: number[][];
+  startDate?: string;
 } {
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -92,6 +93,7 @@ export function parseGPX(xmlContent: string): {
   }
 
   const coordinates: number[][] = [];
+  let startDate: string | undefined;
 
   const trk = gpx?.gpx?.trk;
   if (trk) {
@@ -109,6 +111,14 @@ export function parseGPX(xmlContent: string): {
           const lat = parseFloat(pt["@_lat"]);
           if (!isNaN(lon) && !isNaN(lat)) {
             coordinates.push([lon, lat]);
+            // extract time if present (keep earliest)
+            const t = pt["time"] || pt["@_time"] || pt["@_t"];
+            if (t && !startDate) {
+              try {
+                const d = new Date(t.toString());
+                if (!isNaN(d.getTime())) startDate = d.toISOString();
+              } catch {}
+            }
           }
         }
       }
@@ -135,7 +145,8 @@ export function parseGPX(xmlContent: string): {
     }
   }
 
-  return { name, coordinates };
+  // If we parsed a startDate, include it in the return
+  return startDate ? { name, coordinates, startDate } : { name, coordinates };
 }
 
 export function calculateDistance(coordinates: number[][]): number {
