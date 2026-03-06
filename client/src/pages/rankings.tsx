@@ -304,6 +304,11 @@ export default function RankingsPage() {
             <UserSearch className="w-48 lg:w-64" />
             <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
             <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
+            {user && (
+              <Link href={`/profile/${user.id}`}>
+                <Button variant="ghost" size="sm" className="ml-2">Mi perfil</Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>

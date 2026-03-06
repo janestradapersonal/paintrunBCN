@@ -501,14 +501,20 @@ export default function ProfilePage() {
                     <ActivityIcon className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-semibold">Subir GPX</span>
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="file"
-                      accept=".gpx"
-                      onChange={(e) => handleGPXUpload(e.target.files ? e.target.files[0] : undefined)}
-                      className="text-sm"
-                      data-testid="input-gpx-upload"
-                    />
+                  <div className="flex gap-2 items-center w-full">
+                    <label className="flex-1 relative">
+                      <input
+                        type="file"
+                        accept=".gpx"
+                        onChange={(e) => handleGPXUpload(e.target.files ? e.target.files[0] : undefined)}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        data-testid="input-gpx-upload"
+                      />
+                      <div className="flex items-center justify-between gap-2 border rounded-md px-3 py-2 bg-background">
+                        <span className="text-sm text-muted-foreground">Seleccionar archivo GPX</span>
+                        <span className="text-[12px] text-muted-foreground">Ningún archivo seleccionado</span>
+                      </div>
+                    </label>
                     <Button size="sm" onClick={() => { /* input triggers onChange */ }} disabled={uploadingGPX}>
                       {uploadingGPX ? "Subiendo..." : "Subir"}
                     </Button>

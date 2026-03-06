@@ -33,7 +33,7 @@ export interface IStorage {
   findActivityByCoordinates(userId: string, coordinates: number[][]): Promise<Activity | undefined>;
 
   getRankings(): Promise<(User & { rank: number })[]>;
-  getMonthlyGlobalRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]>;
+  getMonthlyGlobalRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; points?: number; rank: number }[]>;
   getMonthlyNeighborhoodRankings(monthKey: string, groupId?: string): Promise<{ neighborhoodName: string; topUser: string; topUserId: string; totalAreaSqMeters: number; runnerCount: number }[]>;
   getNeighborhoodLeaderboard(neighborhoodName: string, monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]>;
   getUserRank(userId: string): Promise<number>;
@@ -179,7 +179,7 @@ export class DatabaseStorage implements IStorage {
     return allUsers.map((u, i) => ({ ...u, rank: i + 1 }));
   }
 
-  async getMonthlyGlobalRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; rank: number }[]> {
+  async getMonthlyGlobalRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; totalAreaSqMeters: number; points?: number; rank: number }[]> {
     // If groupId is provided, only include users who are members of that group.
     if (groupId) {
       const q = await db.execute(sql`
@@ -192,7 +192,7 @@ export class DatabaseStorage implements IStorage {
         ORDER BY COALESCE(lp.points, 0) DESC, u.username ASC
       `);
       const rows = q.rows || [];
-      return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), rank: i + 1 }));
+      return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), points: Number(r.points || 0), rank: i + 1 }));
     }
 
     // Include all users (even those without activities in the month) using LEFT JOIN.
@@ -205,7 +205,7 @@ export class DatabaseStorage implements IStorage {
       ORDER BY COALESCE(lp.points, 0) DESC, u.username ASC
     `);
     const rows = q.rows || [];
-    return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), rank: i + 1 }));
+    return rows.map((r: any, i: number) => ({ userId: r.userid || r.userId, username: r.username, totalAreaSqMeters: Number(r.totalarea || r.totalArea), points: Number(r.points || 0), rank: i + 1 }));
   }
 
   async getMonthlyNeighborhoodRankings(monthKey: string, groupId?: string): Promise<{ neighborhoodName: string; topUser: string; topUserId: string; totalAreaSqMeters: number; runnerCount: number }[]> {
