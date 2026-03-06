@@ -45,7 +45,8 @@ function formatMonth(monthKey: string): string {
 
 export default function LandingPage() {
   const { user, isLoading, logout } = useAuth();
-
+  const [, navigate] = useLocation();
+  // While loading, show spinner
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-background flex items-center justify-center">
@@ -54,58 +55,16 @@ export default function LandingPage() {
     );
   }
 
+  // Redirect: authenticated users -> rankings, otherwise -> login
   if (user) {
-    return <DashboardView />;
+    navigate("/rankings", { replace: true });
+    return null;
   }
-
-  return <WelcomeView />;
+  navigate("/login", { replace: true });
+  return null;
 }
 
-function WelcomeView() {
-  return (
-    <div className="fixed inset-0 bg-background">
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <BarcelonaMap
-          className="w-full h-full"
-          interactive={false}
-          showNeighborhoods={true}
-        />
-      </div>
-      <div className="absolute inset-0 z-10 bg-background/60 pointer-events-none" />
-
-      <div className="absolute inset-0 z-20 flex items-center justify-center px-4 pointer-events-none">
-        <div className="flex flex-col items-center text-center max-w-md w-full bg-card/90 backdrop-blur-md border border-card-border rounded-md p-8 md:p-10 pointer-events-auto">
-          <span className="text-3xl md:text-5xl font-black tracking-tight mb-3" data-testid="text-splash-logo">
-            <span className="text-primary">paint</span>
-            <span className="text-foreground">run</span>
-            <span className="text-primary font-black">BCN</span>
-          </span>
-          <p className="text-muted-foreground text-sm md:text-base mb-8 leading-relaxed">
-            Pinta Barcelona corriendo. Sube tus rutas, conquista barrios y compite por el mapa.
-          </p>
-
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            <Link href="/login">
-              <Button size="lg" className="gap-2 text-base w-full" data-testid="button-enter-login">
-                Entrar <LogIn className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button variant="outline" size="lg" className="gap-2 text-base w-full" data-testid="button-enter-register">
-                Registrarse <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/rankings">
-              <Button variant="ghost" size="lg" className="gap-2 text-base w-full" data-testid="button-enter-rankings">
-                <Trophy className="w-4 h-4" /> Ver Ranking
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// WelcomeView removed: root now redirects to login or rankings.
 
 function DashboardView() {
   const { user, logout } = useAuth();

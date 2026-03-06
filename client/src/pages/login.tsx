@@ -23,7 +23,7 @@ export default function LoginPage() {
   // Preserve optional returnTo param to redirect after login
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const searchParams = new URLSearchParams(search);
-  const returnTo = searchParams.get('returnTo') || '/';
+  const returnTo = searchParams.get('returnTo') || '/rankings';
   const invite = searchParams.get('invite') || '';
 
   const form = useForm<LoginForm>({
