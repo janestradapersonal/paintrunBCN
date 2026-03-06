@@ -302,6 +302,11 @@ export default function ProfilePage() {
             <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
+            <div className="ml-auto">
+              <Link href="/rankings">
+                <Button variant="ghost" size="sm">Rankings</Button>
+              </Link>
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1" data-testid="month-selector-profile">

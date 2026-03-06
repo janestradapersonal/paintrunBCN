@@ -224,15 +224,29 @@ export default function RankingsPage() {
   ];
 
   const colorOverrides = {} as Record<string, string>;
-  for (let i = 0; i < Math.min(COLOR_PALETTE.length, liveRankings.length); i++) {
-    const u = liveRankings[i];
+  // We'll order by points (from livePoints) for display; fall back to territory order
+  const pointsMap = new Map<string, number>();
+  if (livePoints) {
+    for (const p of livePoints) pointsMap.set(p.userId, p.points || 0);
+  }
+
+  const liveRankingsByPoints = [...liveRankings].map((lr) => ({
+    ...lr,
+    points: pointsMap.get(lr.userId) || 0,
+  })).sort((a, b) => {
+    if (b.points !== a.points) return b.points - a.points;
+    return b.territorySqMeters !== a.territorySqMeters ? b.territorySqMeters - a.territorySqMeters : a.username.localeCompare(b.username);
+  });
+
+  for (let i = 0; i < Math.min(COLOR_PALETTE.length, liveRankingsByPoints.length); i++) {
+    const u = liveRankingsByPoints[i];
     if (u && u.userId) colorOverrides[u.userId] = COLOR_PALETTE[i];
   }
 
   // Build meta map for territories: points and percent
   const territoryMeta: Record<string, { points: number; percent: number }> = {};
   for (const lr of liveRankings) {
-    const pts = (livePoints || []).find((p) => p.userId === lr.userId)?.points || 0;
+    const pts = pointsMap.get(lr.userId) || 0;
     territoryMeta[lr.userId] = { points: pts, percent: lr.territoryPercent };
   }
 
@@ -361,12 +375,12 @@ export default function RankingsPage() {
             </div>
           ) : tab === "global-live" ? (
             <GlobalLiveRankingList
-              rankings={liveRankings}
-              points={livePoints}
-              colorOverrides={colorOverrides}
-              selectedUserId={selectedUserId}
-              onSelectUser={setSelectedUserId}
-            />
+                rankings={liveRankingsByPoints}
+                points={livePoints}
+                colorOverrides={colorOverrides}
+                selectedUserId={selectedUserId}
+                onSelectUser={setSelectedUserId}
+              />
           ) : tab === "global" ? (
             <GlobalRankingList
               podium={globalPodium}
