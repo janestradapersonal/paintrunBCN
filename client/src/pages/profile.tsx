@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { apiRequest } from "@/lib/queryClient";
 import {
   ArrowLeft,
+  LogOut,
   MapPin,
   Trophy,
   Ruler,
@@ -32,6 +33,7 @@ import {
 import { SiStrava, SiGarmin } from "react-icons/si";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 const PRESET_COLORS = [
@@ -89,7 +91,8 @@ function formatDistance(meters: number): string {
 export default function ProfilePage() {
   const [, params] = useRoute("/profile/:userId");
   const userId = params?.userId || "";
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [followPending, setFollowPending] = useState(false);
@@ -302,10 +305,13 @@ export default function ProfilePage() {
             <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
               <Link href="/rankings">
                 <Button variant="ghost" size="sm">Rankings</Button>
               </Link>
+              <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate('/login'); }} data-testid="button-logout-profile">
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
