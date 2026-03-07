@@ -128,6 +128,8 @@ export default function RankingsPage() {
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [myGroups, setMyGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
+  const [createName, setCreateName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -506,9 +508,72 @@ export default function RankingsPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Crear grupo</DialogTitle>
-                  <DialogDescription>Elige un nombre para tu grupo antes de pagar.</DialogDescription>
+                  <DialogDescription>Escribe un nombre para tu grupo y podrás pintar el mapa de Barcelona con tus amigos. Solo hay un coste de creación; los miembros entran gratis y el grupo tiene un coste mensual de 5€.</DialogDescription>
                 </DialogHeader>
-                <GroupModal onCreated={(groupId) => { setGroupContext({ type: 'group', groupId }); localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId })); setShowCreateDialog(false); }} />
+                <div className="space-y-4 w-full">
+                  <div>
+                    <label className="block text-sm font-medium">Nombre del grupo</label>
+                    <input className="input w-full text-black mt-2" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">Con este grupo podrás pintar áreas en equipo, invitar gente con un enlace directo y gestionar miembros. Pago único de creación + 5€/mes por grupo.</p>
+
+                  <div className="flex gap-2">
+                    <Button onClick={async () => {
+                      if (!createName.trim()) { alert('Introduce un nombre para el grupo'); return; }
+                      setCreating(true);
+                      try {
+                        // Capture current groups to detect the new group after checkout
+                        let initialIds = new Set<string>();
+                        try {
+                          const rinit = await fetch(`/api/groups/my`, { credentials: 'include' });
+                          if (rinit.ok) {
+                            const d0 = await rinit.json();
+                            (d0 || []).forEach((g: any) => initialIds.add(String(g.id)));
+                          }
+                        } catch (e) {}
+
+                        const res = await fetch(`/api/stripe/create-checkout-session`, {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ name: createName.trim() }),
+                        });
+                        if (!res.ok) throw new Error('No se pudo crear la sesión');
+                        const { url } = await res.json();
+                        const popup = window.open(url, '_blank');
+
+                        // Poll /api/groups/my until a new group appears (max ~90s)
+                        let attempts = 0;
+                        const maxAttempts = 45;
+                        const iv = setInterval(async () => {
+                          attempts++;
+                          try {
+                            const r = await fetch(`/api/groups/my`, { credentials: 'include' });
+                            if (!r.ok) return;
+                            const data = await r.json();
+                            const newly = (data || []).find((g: any) => !initialIds.has(String(g.id)));
+                            if (newly) {
+                              setGroupContext({ type: 'group', groupId: newly.id });
+                              try { localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: newly.id })); } catch (e) {}
+                              try { popup?.close(); } catch (e) {}
+                              clearInterval(iv);
+                              setShowCreateDialog(false);
+                              setCreateName('');
+                              return;
+                            }
+                          } catch (e) {}
+                          if (attempts >= maxAttempts) {
+                            clearInterval(iv);
+                          }
+                        }, 2000);
+                      } catch (e) {
+                        alert('Error creando sesión de pago.');
+                      } finally { setCreating(false); }
+                    }} disabled={creating}>{creating ? 'Redirigiendo…' : 'Pagar y crear grupo'}</Button>
+                    <Button variant="ghost" onClick={() => setShowCreateDialog(false)}>Cancelar</Button>
+                  </div>
+                </div>
                 <DialogFooter />
               </DialogContent>
             </Dialog>
