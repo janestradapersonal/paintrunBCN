@@ -606,9 +606,24 @@ export default function RankingsPage() {
                           setCreating(false);
                           return;
                         }
-                        const popup = window.open(url, '_blank');
+                        // Try to open Stripe in a new tab. If blocked or on mobile, fall back to same-tab redirect.
+                        let popup: Window | null = null;
+                        try {
+                          popup = window.open(url, '_blank');
+                        } catch (e) {
+                          popup = null;
+                        }
 
-                        // Poll /api/groups/my until a new group appears (max ~90s)
+                        // If popup didn't open or was immediately closed (common on mobile), redirect in same tab
+                        const popupBlocked = !popup || (typeof popup.closed !== 'undefined' && popup.closed === true);
+                        if (popupBlocked) {
+                          // navigate current tab to Stripe (mobile-friendly)
+                          window.location.href = url;
+                          // can't poll while navigating away; rely on server webhook + return URL
+                          return;
+                        }
+
+                        // Poll /api/groups/my until a new group appears (max ~90s) while popup is open
                         let attempts = 0;
                         const maxAttempts = 45;
                         const iv = setInterval(async () => {
