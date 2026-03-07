@@ -296,7 +296,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full">
             <Link href="/">
               <Button variant="ghost" size="icon" data-testid="button-back-profile">
                 <ArrowLeft className="w-4 h-4" />
@@ -306,16 +306,25 @@ export default function ProfilePage() {
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
             <div className="ml-auto flex items-center gap-2">
-              <Link href="/rankings">
-                <Button variant="ghost" size="sm">Rankings</Button>
-              </Link>
+              <div className="hidden sm:flex items-center gap-2">
+                <Link href="/rankings">
+                  <Button variant="ghost" size="sm">Rankings</Button>
+                </Link>
+              </div>
+              <div className="flex sm:hidden items-center gap-1">
+                <Link href="/rankings">
+                  <Button variant="ghost" size="icon" aria-label="Rankings">
+                    <Trophy className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
               <Button variant="ghost" size="icon" onClick={async () => { await logout(); navigate('/login'); }} data-testid="button-logout-profile">
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1" data-testid="month-selector-profile">
+            <div className="hidden md:flex items-center gap-1" data-testid="month-selector-profile">
               <Button variant="ghost" size="icon" onClick={() => {
                 const [y, m] = monthKey.split("-").map(Number);
                 const prev = new Date(y, m - 2, 1);
@@ -366,7 +375,7 @@ export default function ProfilePage() {
       </header>
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] overflow-hidden">
-        <aside className={`lg:w-96 border-b lg:border-b-0 lg:border-r bg-card/50 p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all duration-300 ${getMobilePanelClasses(panelMode).aside}`}>
+        <aside className={`lg:w-96 w-full border-b lg:border-b-0 lg:border-r bg-card/50 p-3 sm:p-4 flex flex-col gap-4 overflow-y-auto shrink-0 transition-all duration-300 max-h-[60vh] lg:max-h-none ${getMobilePanelClasses(panelMode).aside}`}>
           <div className="flex flex-col items-center text-center gap-3">
             <Avatar className="w-16 h-16">
               <AvatarFallback className="text-2xl bg-primary/10 text-primary">
@@ -512,7 +521,7 @@ export default function ProfilePage() {
                     <ActivityIcon className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-xs font-semibold">Subir GPX</span>
                   </div>
-                  <div className="flex gap-2 items-center w-full">
+                  <div className="flex gap-2 items-center w-full sm:flex-row flex-col sm:items-center">
                     <label className="flex-1 relative">
                       <input
                         type="file"
@@ -521,12 +530,14 @@ export default function ProfilePage() {
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         data-testid="input-gpx-upload"
                       />
-                      <div className="flex items-center justify-between gap-2 border rounded-md px-3 py-2 bg-background">
-                        <span className="text-sm text-muted-foreground">Seleccionar archivo GPX</span>
-                        <span className="text-[12px] text-muted-foreground">Ningún archivo seleccionado</span>
+                      <div className="flex items-center justify-between gap-2 border rounded-md px-3 py-2 bg-background w-full">
+                        <div className="flex-1 text-left">
+                          <span className="text-sm text-muted-foreground block">Seleccionar archivo GPX</span>
+                          <span className="text-[12px] text-muted-foreground block sm:inline">Ningún archivo seleccionado</span>
+                        </div>
                       </div>
                     </label>
-                    <Button size="sm" onClick={() => { /* input triggers onChange */ }} disabled={uploadingGPX}>
+                    <Button size="sm" className="w-full sm:w-auto" onClick={() => { /* input triggers onChange */ }} disabled={uploadingGPX}>
                       {uploadingGPX ? "Subiendo..." : "Subir"}
                     </Button>
                   </div>
