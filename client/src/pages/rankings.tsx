@@ -320,12 +320,7 @@ export default function RankingsPage() {
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" size="icon" data-testid="button-back">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
-            <span className="text-xl font-bold tracking-tight hidden sm:inline">
+            <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
           </div>
@@ -381,13 +376,13 @@ export default function RankingsPage() {
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
                   <Link href="/groups">
-                    <Button variant="ghost">Ver grupos</Button>
+                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Ver grupos</Button>
                   </Link>
                   <Link href="/groups#entrar">
-                    <Button variant="ghost">Entrar grupo</Button>
+                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Entrar grupo</Button>
                   </Link>
                   <Link href="/groups#crear">
-                    <Button variant="ghost">Crear grupo (Pago)</Button>
+                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Crear grupo (Pago)</Button>
                   </Link>
                 </div>
               </div>

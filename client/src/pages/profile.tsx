@@ -298,11 +298,7 @@ export default function ProfilePage() {
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3 w-full">
-            <Link href="/">
-              <Button variant="ghost" size="icon" data-testid="button-back-profile">
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
+            {/* back arrow removed per request */}
             <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
