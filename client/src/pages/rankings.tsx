@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,10 +111,12 @@ function MonthSelector({ monthKey, onChange }: { monthKey: string; onChange: (mk
 }
 
 export default function RankingsPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileMonth, setShowMobileMonth] = useState(false);
   const [showMobileContext, setShowMobileContext] = useState(false);
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [groupContext, setGroupContext] = useState<{ type: "world" | "group"; groupId?: string }>(() => {
     try {
       const raw = localStorage.getItem("contextSelector");
@@ -200,6 +202,17 @@ export default function RankingsPage() {
       return res.json();
     },
     enabled: tab === "global-live",
+  });
+
+  const { data: groupInfo } = useQuery<any>({
+    queryKey: ["/api/groups", groupContext.groupId],
+    queryFn: async () => {
+      if (!groupContext || groupContext.type !== "group" || !groupContext.groupId) return null;
+      const res = await fetch(`/api/groups/${groupContext.groupId}`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: groupContext.type === "group" && !!groupContext.groupId,
   });
 
   // Color palette for top N users in Global Live (distinct colors)
@@ -348,12 +361,52 @@ export default function RankingsPage() {
               </Button>
             </div>
 
-            {user && (
-              <Link href={`/profile/${user.id}`}>
-                <Button variant="ghost" size="sm" className="ml-2 hidden sm:inline">Mi perfil</Button>
-              </Link>
+            {groupContext.type === 'group' && groupInfo && (
+              <div className="ml-2 hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span className="truncate max-w-[160px]">{groupInfo.name}</span>
+              </div>
             )}
+
+            <div className="ml-2 flex items-center gap-1">
+              <Link href={`/profile/${user?.id}`}>
+                <Button variant="ghost" size="icon" aria-label="Mi perfil" className="px-2">
+                  <Avatar className="w-7 h-7">
+                    <AvatarFallback>{user?.username?.slice(0,2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={async () => { try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); } }} aria-label="Cerrar sesión">
+                <ArrowLeft className="w-4 h-4 rotate-180" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/groups')} className="hidden sm:inline" aria-label="Ver competiciones">
+                <Users className="w-4 h-4" />
+              </Button>
+              <div className="sm:hidden">
+                <Button variant="ghost" size="icon" onClick={() => setShowGroupMenu(v => !v)} aria-label="Grupo">
+                  <Users className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           </div>
+
+          {showGroupMenu && (
+            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
+              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-[calc(100%-32px)]">
+                <div className="flex flex-col gap-2">
+                  <Link href="/groups">
+                    <Button variant="ghost">Ver grupos</Button>
+                  </Link>
+                  <Link href="/groups#crear">
+                    <Button variant="ghost">Crear grupo</Button>
+                  </Link>
+                  <div>
+                    <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); setShowGroupMenu(false); }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showMobileSearch && (
             <div className="absolute left-4 right-4 top-full mt-2 z-50 sm:hidden">

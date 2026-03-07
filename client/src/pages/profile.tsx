@@ -102,6 +102,7 @@ export default function ProfilePage() {
   const [savingColor, setSavingColor] = useState(false);
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [panelMode, setPanelMode] = useState<PanelMode>("list");
+  const [showMobileMonth, setShowMobileMonth] = useState(false);
 
   const { data: profile, isLoading: profileLoading } = useQuery<UserProfile>({
     queryKey: ["/api/users", userId, "profile"],
@@ -346,6 +347,11 @@ export default function ProfilePage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+            <div className="md:hidden flex items-center">
+              <Button variant="ghost" size="icon" onClick={() => setShowMobileMonth(v => !v)} aria-label="Mes">
+                <Calendar className="w-4 h-4" />
+              </Button>
+            </div>
             {user && !isOwnProfile && (
               <Button
                 variant={profile.isFollowing ? "secondary" : "default"}
@@ -372,6 +378,35 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+        {showMobileMonth && (
+          <div className="absolute left-4 right-4 top-full mt-2 z-50 md:hidden">
+            <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => {
+                  const [y, m] = monthKey.split("-").map(Number);
+                  const prev = new Date(y, m - 2, 1);
+                  setMonthKey(getMonthKey(prev));
+                  setShowMobileMonth(false);
+                }}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="flex-1 text-center">
+                  <div className="text-sm font-medium">{formatMonth(monthKey)}</div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => {
+                  const [y, m] = monthKey.split("-").map(Number);
+                  const next = new Date(y, m, 1);
+                  const currentMonth = getMonthKey(new Date());
+                  const nextKey = getMonthKey(next);
+                  if (nextKey <= currentMonth) setMonthKey(nextKey);
+                  setShowMobileMonth(false);
+                }}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-64px)] overflow-hidden">
