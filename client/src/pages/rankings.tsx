@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import ContextSelector from "@/components/context-selector";
 import type { Activity, MonthlyTitle } from "@shared/schema";
@@ -112,6 +112,9 @@ function MonthSelector({ monthKey, onChange }: { monthKey: string; onChange: (mk
 
 export default function RankingsPage() {
   const { user } = useAuth();
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [showMobileMonth, setShowMobileMonth] = useState(false);
+  const [showMobileContext, setShowMobileContext] = useState(false);
   const [groupContext, setGroupContext] = useState<{ type: "world" | "group"; groupId?: string }>(() => {
     try {
       const raw = localStorage.getItem("contextSelector");
@@ -315,15 +318,66 @@ export default function RankingsPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <UserSearch className="w-48 lg:w-64" />
-            <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
-            <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
+            <div className="hidden sm:block">
+              <UserSearch className="w-48 lg:w-64" />
+            </div>
+
+            <div className="sm:hidden flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowMobileSearch(v => !v)} aria-label="Buscar">
+                <Search className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="hidden sm:block">
+              <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
+            </div>
+
+            <div className="sm:hidden">
+              <Button variant="ghost" size="icon" onClick={() => setShowMobileContext(v => !v)} aria-label="Context">
+                <Users className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="hidden md:block">
+              <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
+            </div>
+
+            <div className="md:hidden flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowMobileMonth(v => !v)} aria-label="Mes">
+                <Calendar className="w-4 h-4" />
+              </Button>
+            </div>
+
             {user && (
               <Link href={`/profile/${user.id}`}>
-                <Button variant="ghost" size="sm" className="ml-2">Mi perfil</Button>
+                <Button variant="ghost" size="sm" className="ml-2 hidden sm:inline">Mi perfil</Button>
               </Link>
             )}
           </div>
+
+          {showMobileSearch && (
+            <div className="absolute left-4 right-4 top-full mt-2 z-50 sm:hidden">
+              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+                <UserSearch />
+              </div>
+            </div>
+          )}
+
+          {showMobileMonth && (
+            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
+              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+                <MonthSelector monthKey={monthKey} onChange={(mk) => { setMonthKey(mk); setShowMobileMonth(false); }} />
+              </div>
+            </div>
+          )}
+
+          {showMobileContext && (
+            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
+              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+                <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); setShowMobileContext(false); }} />
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
