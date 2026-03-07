@@ -7,11 +7,19 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-import ContextSelector from "@/components/context-selector";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
 import UserSearch from "@/components/user-search";
-import { useState, useMemo } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import GroupModal from "@/components/group-modal";
+import { useState, useMemo, useEffect } from "react";
 import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 type RankedUser = {
@@ -116,6 +124,24 @@ export default function RankingsPage() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileMonth, setShowMobileMonth] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [showGroupsDialog, setShowGroupsDialog] = useState(false);
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [myGroups, setMyGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const r = await fetch('/api/groups/my', { credentials: 'include' });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (mounted) setMyGroups(data || []);
+      } catch (e) {}
+    };
+    if (showGroupsDialog) load();
+    return () => { mounted = false; };
+  }, [showGroupsDialog]);
   const [groupContext, setGroupContext] = useState<{ type: "world" | "group"; groupId?: string }>(() => {
     try {
       const raw = localStorage.getItem("contextSelector");
@@ -375,15 +401,9 @@ export default function RankingsPage() {
             <div className="absolute right-4 top-full mt-2 z-50">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
-                  <Link href="/groups">
-                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Ver grupos</Button>
-                  </Link>
-                  <Link href="/groups#entrar">
-                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Entrar grupo</Button>
-                  </Link>
-                  <Link href="/groups#crear">
-                    <Button variant="ghost" onClick={() => setShowGroupMenu(false)}>Crear grupo (Pago)</Button>
-                  </Link>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); }}>Ver grupos</Button>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowJoinDialog(true); }}>Entrar grupo</Button>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); }}>Crear grupo (Pago)</Button>
                 </div>
               </div>
             </div>
@@ -406,6 +426,93 @@ export default function RankingsPage() {
           )}
 
           {/* mobile context handled via group menu below */}
+          {showGroupsDialog && (
+            <Dialog open={showGroupsDialog} onOpenChange={setShowGroupsDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Tus grupos</DialogTitle>
+                  <DialogDescription>Lista de grupos en los que estás activo.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
+                    <div className="min-w-0">
+                      <div className="font-medium">Barcelona</div>
+                      <div className="text-[12px] text-muted-foreground">Competir contra toda Barcelona</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => { setGroupContext({ type: 'world' }); setShowGroupsDialog(false); }}>Entrar</Button>
+                    </div>
+                  </div>
+
+                  {myGroups.length === 0 && <div className="text-sm text-muted-foreground">No estás en ningún grupo</div>}
+                  {myGroups.map((g) => (
+                    <div key={g.id} className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{g.name}</div>
+                        <div className="text-[12px] text-muted-foreground">Código: {g.invite_code}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => {
+                          const shareUrl = `${window.location.origin}/login?invite=${encodeURIComponent(g.invite_code)}`;
+                          const text = encodeURIComponent(`Únete a mi grupo en paintrunBCN: ${shareUrl}`);
+                          window.open(`https://wa.me/?text=${text}`, '_blank');
+                        }}>Invitar</Button>
+                        <Button size="sm" onClick={() => { setGroupContext({ type: 'group', groupId: g.id }); localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: g.id })); setShowGroupsDialog(false); }}>Entrar</Button>
+                        <Button size="sm" variant="ghost" onClick={async () => {
+                          if (!confirm(`¿Seguro que quieres salir del grupo ${g.name}?`)) return;
+                          try {
+                            const r = await fetch('/api/groups/leave', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupId: g.id }) });
+                            if (r.ok) {
+                              const data = await r.json();
+                              setMyGroups(data.groups || myGroups.filter(x => x.id !== g.id));
+                              try {
+                                const cs = JSON.parse(localStorage.getItem('contextSelector') || 'null');
+                                if (cs && cs.type === 'group' && cs.groupId === g.id) {
+                                  localStorage.removeItem('contextSelector');
+                                  setGroupContext({ type: 'world' });
+                                }
+                              } catch (e) {}
+                            } else {
+                              alert('No se pudo salir del grupo');
+                            }
+                          } catch (e) {
+                            alert('Error al salir del grupo');
+                          }
+                        }}>Salir</Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {showJoinDialog && (
+            <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Entrar en un grupo</DialogTitle>
+                  <DialogDescription>Introduce el código de invitación para unirte.</DialogDescription>
+                </DialogHeader>
+                <GroupModal onCreated={(groupId) => { setGroupContext({ type: 'group', groupId }); localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId })); setShowJoinDialog(false); }} />
+                <DialogFooter />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {showCreateDialog && (
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Crear grupo</DialogTitle>
+                  <DialogDescription>Elige un nombre para tu grupo antes de pagar.</DialogDescription>
+                </DialogHeader>
+                <GroupModal onCreated={(groupId) => { setGroupContext({ type: 'group', groupId }); localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId })); setShowCreateDialog(false); }} />
+                <DialogFooter />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </header>
 
