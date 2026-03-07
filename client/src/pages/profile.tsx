@@ -371,11 +371,7 @@ export default function ProfilePage() {
                 {profile.isFollowing ? "Dejar de seguir" : "Seguir"}
               </Button>
             )}
-            {isOwnProfile && (
-              <Badge variant="secondary" className="gap-1.5">
-                Tu perfil
-              </Badge>
-            )}
+            {/* removed 'Tu perfil' badge per UX request */}
           </div>
         </div>
         {showMobileMonth && (

@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import ContextSelector from "@/components/context-selector";
 import type { Activity, MonthlyTitle } from "@shared/schema";
@@ -115,7 +115,6 @@ export default function RankingsPage() {
   const [, navigate] = useLocation();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileMonth, setShowMobileMonth] = useState(false);
-  const [showMobileContext, setShowMobileContext] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [groupContext, setGroupContext] = useState<{ type: "world" | "group"; groupId?: string }>(() => {
     try {
@@ -345,11 +344,7 @@ export default function RankingsPage() {
               <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
             </div>
 
-            <div className="sm:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setShowMobileContext(v => !v)} aria-label="Context">
-                <Users className="w-4 h-4" />
-              </Button>
-            </div>
+            {/* mobile group button handled below (single entry) */}
 
             <div className="hidden md:block">
               <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
@@ -362,10 +357,9 @@ export default function RankingsPage() {
             </div>
 
             {groupContext.type === 'group' && groupInfo && (
-              <div className="ml-2 hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="w-4 h-4" />
-                <span className="truncate max-w-[160px]">{groupInfo.name}</span>
-              </div>
+              <div className="ml-2 flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="truncate max-w-[160px]">{groupInfo.name}</span>
+                </div>
             )}
 
             <div className="ml-2 flex items-center gap-1">
@@ -377,11 +371,9 @@ export default function RankingsPage() {
                 </Button>
               </Link>
               <Button variant="ghost" size="icon" onClick={async () => { try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); } }} aria-label="Cerrar sesión">
-                <ArrowLeft className="w-4 h-4 rotate-180" />
+                <LogOut className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => navigate('/groups')} className="hidden sm:inline" aria-label="Ver competiciones">
-                <Users className="w-4 h-4" />
-              </Button>
+              {/* groups nav removed (use group menu / ContextSelector) */}
               <div className="sm:hidden">
                 <Button variant="ghost" size="icon" onClick={() => setShowGroupMenu(v => !v)} aria-label="Grupo">
                   <Users className="w-4 h-4" />
@@ -424,13 +416,7 @@ export default function RankingsPage() {
             </div>
           )}
 
-          {showMobileContext && (
-            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
-              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
-                <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); setShowMobileContext(false); }} />
-              </div>
-            </div>
-          )}
+          {/* mobile context handled via group menu below */}
         </div>
       </header>
 
