@@ -19,7 +19,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import GroupModal from "@/components/group-modal";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { MobilePanelToggle, getMobilePanelClasses, type PanelMode } from "@/components/mobile-panel-toggle";
 
 type RankedUser = {
@@ -343,10 +344,30 @@ export default function RankingsPage() {
     }));
   }, [globalRankings]);
 
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [groupMenuTop, setGroupMenuTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!showGroupMenu) return;
+    const update = () => {
+      const el = headerRef.current;
+      if (!el) return setGroupMenuTop(64);
+      const rect = el.getBoundingClientRect();
+      setGroupMenuTop(rect.bottom + window.scrollY);
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, [showGroupMenu]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
+        <div ref={headerRef} className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
@@ -429,8 +450,8 @@ export default function RankingsPage() {
             </div>
           </div>
 
-          {showGroupMenu && (
-            <div className="absolute right-4 top-full mt-2 z-[99999]">
+          {showGroupMenu && groupMenuTop !== null && createPortal(
+            <div style={{ position: 'absolute', top: `${groupMenuTop}px`, right: '1rem' }} className="z-[99999]">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
                   <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Ver grupos</Button>
@@ -438,7 +459,8 @@ export default function RankingsPage() {
                   <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); setShowGroupsDialog(false); setShowJoinDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Crear grupo (Pago)</Button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {showMobileSearch && (
