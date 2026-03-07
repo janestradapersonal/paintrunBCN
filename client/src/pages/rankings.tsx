@@ -569,8 +569,20 @@ export default function RankingsPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ name: createName.trim() }),
                         });
-                        if (!res.ok) throw new Error('No se pudo crear la sesión');
-                        const { url } = await res.json();
+                        if (!res.ok) {
+                          let errMsg = 'No se pudo crear la sesión';
+                          try { const err = await res.json(); if (err?.message) errMsg = err.message; } catch (e) {}
+                          throw new Error(errMsg);
+                        }
+                        const data = await res.json().catch(() => ({}));
+                        const url = data?.url;
+                        if (!url) {
+                          // show response for debugging
+                          alert('No se recibió URL de Stripe desde el servidor. Revisa los logs del servidor.');
+                          console.error('Stripe session response without url:', data);
+                          setCreating(false);
+                          return;
+                        }
                         const popup = window.open(url, '_blank');
 
                         // Poll /api/groups/my until a new group appears (max ~90s)
