@@ -340,9 +340,7 @@ export default function RankingsPage() {
               </Button>
             </div>
 
-            <div className="hidden sm:block">
-              <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); }} />
-            </div>
+            {/* ContextSelector removed from header - use group menu instead */}
 
             {/* mobile group button handled below (single entry) */}
 
@@ -356,11 +354,7 @@ export default function RankingsPage() {
               </Button>
             </div>
 
-            {groupContext.type === 'group' && groupInfo && (
-              <div className="ml-2 flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="truncate max-w-[160px]">{groupInfo.name}</span>
-                </div>
-            )}
+            {/* group name removed from header per request */}
 
             <div className="ml-2 flex items-center gap-1">
               <Link href={`/profile/${user?.id}`}>
@@ -374,7 +368,7 @@ export default function RankingsPage() {
                 <LogOut className="w-4 h-4" />
               </Button>
               {/* groups nav removed (use group menu / ContextSelector) */}
-              <div className="sm:hidden">
+              <div>
                 <Button variant="ghost" size="icon" onClick={() => setShowGroupMenu(v => !v)} aria-label="Grupo">
                   <Users className="w-4 h-4" />
                 </Button>
@@ -383,18 +377,18 @@ export default function RankingsPage() {
           </div>
 
           {showGroupMenu && (
-            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
-              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-[calc(100%-32px)]">
+            <div className="absolute right-4 top-full mt-2 z-50">
+              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
                   <Link href="/groups">
                     <Button variant="ghost">Ver grupos</Button>
                   </Link>
-                  <Link href="/groups#crear">
-                    <Button variant="ghost">Crear grupo</Button>
+                  <Link href="/groups#entrar">
+                    <Button variant="ghost">Entrar grupo</Button>
                   </Link>
-                  <div>
-                    <ContextSelector value={groupContext} onChange={(v) => { setGroupContext(v); localStorage.setItem("contextSelector", JSON.stringify(v)); setShowGroupMenu(false); }} />
-                  </div>
+                  <Link href="/groups#crear">
+                    <Button variant="ghost">Crear grupo (Pago)</Button>
+                  </Link>
                 </div>
               </div>
             </div>
