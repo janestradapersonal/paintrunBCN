@@ -344,7 +344,15 @@ export default function ProfilePage() {
               </Button>
             </div>
             <div className="md:hidden flex items-center">
-              <Button variant="ghost" size="icon" onClick={() => setShowMobileMonth(v => !v)} aria-label="Mes">
+              <Button variant="ghost" size="icon" onClick={() => {
+                const next = !showMobileMonth;
+                setShowMobileMonth(next);
+                if (next) {
+                  setShowFollowers(false);
+                  setShowFollowing(false);
+                  setShowColorPicker(false);
+                }
+              }} aria-label="Mes">
                 <Calendar className="w-4 h-4" />
               </Button>
             </div>
@@ -419,7 +427,15 @@ export default function ProfilePage() {
             {isOwnProfile && (
               <div className="w-full">
                 <button
-                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  onClick={() => {
+                    const next = !showColorPicker;
+                    setShowColorPicker(next);
+                    if (next) {
+                      setShowFollowers(false);
+                      setShowFollowing(false);
+                      setShowMobileMonth(false);
+                    }
+                  }}
                   className="flex items-center gap-2 mx-auto text-xs text-muted-foreground hover-elevate rounded-md px-3 py-1.5"
                   data-testid="button-color-picker-toggle"
                 >
@@ -615,7 +631,7 @@ export default function ProfilePage() {
 
           <div className="flex gap-2">
             <button
-              onClick={() => { setShowFollowers(!showFollowers); setShowFollowing(false); }}
+              onClick={() => { const next = !showFollowers; setShowFollowers(next); setShowFollowing(false); if (next) setShowMobileMonth(false); }}
               className={`flex-1 flex flex-col items-center p-2 rounded-md transition-colors ${showFollowers ? "bg-accent" : "hover-elevate"}`}
               data-testid="button-show-followers"
             >
@@ -623,7 +639,7 @@ export default function ProfilePage() {
               <span className="text-[10px] text-muted-foreground">Seguidores</span>
             </button>
             <button
-              onClick={() => { setShowFollowing(!showFollowing); setShowFollowers(false); }}
+              onClick={() => { const next = !showFollowing; setShowFollowing(next); setShowFollowers(false); if (next) setShowMobileMonth(false); }}
               className={`flex-1 flex flex-col items-center p-2 rounded-md transition-colors ${showFollowing ? "bg-accent" : "hover-elevate"}`}
               data-testid="button-show-following"
             >

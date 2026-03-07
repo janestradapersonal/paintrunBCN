@@ -358,7 +358,17 @@ export default function RankingsPage() {
             </div>
 
             <div className="sm:hidden flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setShowMobileSearch(v => !v)} aria-label="Buscar">
+              <Button variant="ghost" size="icon" onClick={() => {
+                const next = !showMobileSearch;
+                setShowMobileSearch(next);
+                if (next) {
+                  setShowMobileMonth(false);
+                  setShowGroupMenu(false);
+                  setShowGroupsDialog(false);
+                  setShowJoinDialog(false);
+                  setShowCreateDialog(false);
+                }
+              }} aria-label="Buscar">
                 <Search className="w-4 h-4" />
               </Button>
             </div>
@@ -372,7 +382,17 @@ export default function RankingsPage() {
             </div>
 
             <div className="md:hidden flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => setShowMobileMonth(v => !v)} aria-label="Mes">
+              <Button variant="ghost" size="icon" onClick={() => {
+                const next = !showMobileMonth;
+                setShowMobileMonth(next);
+                if (next) {
+                  setShowMobileSearch(false);
+                  setShowGroupMenu(false);
+                  setShowGroupsDialog(false);
+                  setShowJoinDialog(false);
+                  setShowCreateDialog(false);
+                }
+              }} aria-label="Mes">
                 <Calendar className="w-4 h-4" />
               </Button>
             </div>
@@ -392,7 +412,17 @@ export default function RankingsPage() {
               </Button>
               {/* groups nav removed (use group menu / ContextSelector) */}
               <div>
-                <Button variant="ghost" size="icon" onClick={() => setShowGroupMenu(v => !v)} aria-label="Grupo">
+                <Button variant="ghost" size="icon" onClick={() => {
+                  const next = !showGroupMenu;
+                  setShowGroupMenu(next);
+                  if (next) {
+                    setShowMobileSearch(false);
+                    setShowMobileMonth(false);
+                    setShowGroupsDialog(false);
+                    setShowJoinDialog(false);
+                    setShowCreateDialog(false);
+                  }
+                }} aria-label="Grupos">
                   <Users className="w-4 h-4" />
                 </Button>
               </div>
@@ -403,9 +433,9 @@ export default function RankingsPage() {
             <div className="absolute right-4 top-full mt-2 z-50">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); }}>Ver grupos</Button>
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowJoinDialog(true); }}>Entrar grupo</Button>
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); }}>Crear grupo (Pago)</Button>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Ver grupos</Button>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowJoinDialog(true); setShowGroupsDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Entrar grupo</Button>
+                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); setShowGroupsDialog(false); setShowJoinDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Crear grupo (Pago)</Button>
                 </div>
               </div>
             </div>
@@ -430,7 +460,7 @@ export default function RankingsPage() {
           {/* mobile context handled via group menu below */}
           {showGroupsDialog && (
             <Dialog open={showGroupsDialog} onOpenChange={setShowGroupsDialog}>
-              <DialogContent>
+              <DialogContent className="z-[99999]">
                 <DialogHeader>
                   <DialogTitle>Tus grupos</DialogTitle>
                   <DialogDescription>Lista de grupos en los que estás activo.</DialogDescription>
@@ -492,7 +522,7 @@ export default function RankingsPage() {
 
           {showJoinDialog && (
             <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
-              <DialogContent>
+              <DialogContent className="z-[99999]">
                 <DialogHeader>
                   <DialogTitle>Entrar en un grupo</DialogTitle>
                   <DialogDescription>Introduce el código de invitación para unirte.</DialogDescription>
@@ -505,7 +535,7 @@ export default function RankingsPage() {
 
           {showCreateDialog && (
             <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogContent>
+              <DialogContent className="z-[99999]">
                 <DialogHeader>
                   <DialogTitle>Crear grupo</DialogTitle>
                   <DialogDescription>Escribe un nombre para tu grupo y podrás pintar el mapa de Barcelona con tus amigos. Solo hay un coste de creación; los miembros entran gratis y el grupo tiene un coste mensual de 5€.</DialogDescription>
