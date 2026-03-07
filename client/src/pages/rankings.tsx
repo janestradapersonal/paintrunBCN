@@ -430,7 +430,7 @@ export default function RankingsPage() {
           </div>
 
           {showGroupMenu && (
-            <div className="absolute right-4 top-full mt-2 z-50">
+            <div className="absolute right-4 top-full mt-2 z-[99999]">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
                   <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Ver grupos</Button>
@@ -442,7 +442,7 @@ export default function RankingsPage() {
           )}
 
           {showMobileSearch && (
-            <div className="absolute left-4 right-4 top-full mt-2 z-50 sm:hidden">
+            <div className="absolute left-4 right-4 top-full mt-2 z-[99999] sm:hidden">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
                 <UserSearch />
               </div>
@@ -450,7 +450,7 @@ export default function RankingsPage() {
           )}
 
           {showMobileMonth && (
-            <div className="absolute left-4 top-full mt-2 z-50 sm:hidden">
+            <div className="absolute left-4 top-full mt-2 z-[99999] sm:hidden">
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
                 <MonthSelector monthKey={monthKey} onChange={(mk) => { setMonthKey(mk); setShowMobileMonth(false); }} />
               </div>

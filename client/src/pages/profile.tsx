@@ -379,7 +379,7 @@ export default function ProfilePage() {
           </div>
         </div>
         {showMobileMonth && (
-          <div className="absolute left-4 right-4 top-full mt-2 z-50 md:hidden">
+          <div className="absolute left-4 right-4 top-full mt-2 z-[99999] md:hidden">
             <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" onClick={() => {
