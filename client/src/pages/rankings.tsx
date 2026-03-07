@@ -353,7 +353,8 @@ export default function RankingsPage() {
       const el = headerRef.current;
       if (!el) return setGroupMenuTop(64);
       const rect = el.getBoundingClientRect();
-      setGroupMenuTop(rect.bottom + window.scrollY);
+      // store viewport bottom so we can position fixed relative to viewport
+      setGroupMenuTop(rect.bottom);
     };
     update();
     window.addEventListener("resize", update);
@@ -451,7 +452,7 @@ export default function RankingsPage() {
           </div>
 
           {showGroupMenu && groupMenuTop !== null && createPortal(
-            <div style={{ position: 'absolute', top: `${groupMenuTop}px`, right: '1rem' }} className="z-[99999]">
+            <div style={{ position: 'fixed', top: `${groupMenuTop}px`, right: '1rem', zIndex: 2147483000 }}>
               <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
                 <div className="flex flex-col gap-2">
                   <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Ver grupos</Button>
