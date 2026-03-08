@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GroupModal({ onCreated }: { onCreated?: (groupId: string) => void }) {
+  const { toast } = useToast();
   const [inviteCode, setInviteCode] = useState("");
   const [groupName, setGroupName] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -26,6 +28,9 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       } else {
         const data = await res.json();
         onCreated?.(data.groupId);
+        try {
+          toast({ title: "Ahora estás en el grupo", description: data.group?.name || data.name || "" });
+        } catch (e) {}
         // Stay in-app; parent will handle navigation or UI update.
       }
     } catch (e: any) {

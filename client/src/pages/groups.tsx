@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import GroupModal from "@/components/group-modal";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
 export default function GroupsPage() {
+  const { toast } = useToast();
   const [groups, setGroups] = useState<{ id: string; name: string; invite_code: string }[]>([]);
   const [createdGroup, setCreatedGroup] = useState<{ id: string; name?: string; invite_code: string } | null>(null);
 
@@ -58,6 +60,9 @@ export default function GroupsPage() {
               // set context and go to rankings
               if (data.group && data.group.id) {
                 localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: data.group.id }));
+                try {
+                  toast({ title: "Ahora estás en el grupo", description: data.group?.name || "" });
+                } catch (e) {}
                 // Stay on the groups page so the user sees the group in "Ver grupos"
               }
             }
