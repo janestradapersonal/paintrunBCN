@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useInstallPrompt } from "@/hooks/use-install-prompt";
+import { ArrowLeft, Loader2, Download } from "lucide-react";
 
 type LoginForm = z.infer<typeof loginSchema>;
 
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
+  const { isInstallable, handleInstall } = useInstallPrompt();
 
   // Preserve optional returnTo param to redirect after login
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -94,6 +96,17 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
+                {isInstallable && (
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full mb-2" 
+                    onClick={handleInstall}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Instalar Juego
+                  </Button>
+                )}
                 <Button type="submit" className="w-full" disabled={isPending} data-testid="button-submit-login">
                   {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   Iniciar sesión
