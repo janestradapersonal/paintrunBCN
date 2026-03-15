@@ -7,15 +7,9 @@ interface BeforeInstallPromptEvent extends Event {
 
 export function useInstallPrompt() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
   const [isInstallable, setIsInstallable] = useState(false);
 
   useEffect(() => {
-    // Detectar si es móvil o tablet
-    const userAgent = navigator.userAgent;
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-    setIsMobile(isMobileDevice);
-
     // Escuchar el evento beforeinstallprompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -52,7 +46,7 @@ export function useInstallPrompt() {
   };
 
   return {
-    isInstallable: isInstallable && isMobile,
+    isInstallable,
     handleInstall,
   };
 }
