@@ -105,7 +105,7 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       <div>
         <Label>Unirse con código de invitación</Label>
         <div className="flex gap-2 mt-2">
-          <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Código (ej: AB12CD)" className="flex-1 text-black" />
+          <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Código (ej: AB12CD)" className="flex-1 text-white placeholder:text-gray-400" />
           <Button onClick={join} disabled={joining || !inviteCode.trim()}>{joining ? "Uniendo…" : "Unirse"}</Button>
         </div>
         {joinError && <p className="text-red-500 text-sm mt-1">{joinError}</p>}
@@ -114,7 +114,7 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
       <div className="border-t pt-4">
         <div className="mb-2">¿Quieres crear un grupo privado para tus colegas?</div>
         <div className="space-y-2">
-          <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Nombre del grupo" className="text-black" />
+          <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Nombre del grupo" className="text-white placeholder:text-gray-400" />
           <div className="flex gap-2">
             <Button onClick={create} disabled={creating || !groupName.trim()}>{creating ? "Redirigiendo…" : "Crear grupo (pago)"}</Button>
           </div>

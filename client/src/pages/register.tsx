@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Eye, EyeOff } from "lucide-react";
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
@@ -19,6 +19,7 @@ export default function RegisterPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isPending, setIsPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Preserve optional returnTo param so we can continue after verification
   const search = typeof window !== 'undefined' ? window.location.search : '';
@@ -110,7 +111,22 @@ export default function RegisterPage() {
                     <FormItem>
                       <FormLabel>Contraseña</FormLabel>
                       <FormControl>
-                        <Input placeholder="Min. 6 caracteres" type="password" data-testid="input-password" {...field} />
+                        <div className="relative">
+                          <Input
+                            placeholder="Min. 6 caracteres"
+                            type={showPassword ? "text" : "password"}
+                            data-testid="input-password"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

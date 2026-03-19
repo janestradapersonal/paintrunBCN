@@ -673,7 +673,7 @@ export default function RankingsPage() {
                 <div className="space-y-4 w-full">
                   <div>
                     <label className="block text-sm font-medium">Nombre del grupo</label>
-                    <input className="input w-full text-black mt-2" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" />
+                    <input className="input w-full text-white placeholder:text-gray-400 mt-2" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" />
                   </div>
 
                   <p className="text-sm text-muted-foreground">Con este grupo podrás pintar áreas en equipo, invitar gente con un enlace directo y gestionar miembros. Pago único de creación + 5€/mes por grupo.</p>
