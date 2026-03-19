@@ -765,7 +765,6 @@ export default function RankingsPage() {
               </DialogContent>
             </Dialog>
           )}
-        </div>
       </header>
 
       {/* Welcome Banner */}
