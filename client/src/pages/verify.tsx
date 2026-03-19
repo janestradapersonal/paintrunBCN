@@ -76,7 +76,7 @@ export default function VerifyPage() {
               Verificar
             </Button>
             <p className="text-sm text-muted-foreground text-center">
-              En modo desarrollo, el código se muestra en la notificación al registrarse.
+              ¡Revisad la carpeta de spam!
             </p>
           </CardContent>
         </Card>
