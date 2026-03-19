@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
 import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Activity, MonthlyTitle } from "@shared/schema";
@@ -480,18 +481,18 @@ export default function RankingsPage() {
               }} aria-label="Mes">
                 <Calendar className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => {
-                const next = !showGroupMenu;
-                setShowGroupMenu(next);
-                if (next) {
-                  setShowGroupsDialog(false);
-                  setShowJoinDialog(false);
-                  setShowCreateDialog(false);
-                }
-                setShowMobileMenu(false);
-              }} aria-label="Grupos">
-                <Users className="w-4 h-4" />
-              </Button>
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 cursor-pointer flex-1 min-w-0"
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  setShowGroupsDialog(true);
+                }}
+              >
+                <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium text-primary truncate">
+                  {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
+                </span>
+              </div>
               <Button variant="ghost" size="icon" onClick={async () => {
                 setShowMobileMenu(false);
                 try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); }
@@ -673,7 +674,7 @@ export default function RankingsPage() {
                 <div className="space-y-4 w-full">
                   <div>
                     <label className="block text-sm font-medium">Nombre del grupo</label>
-                    <input className="input w-full text-white placeholder:text-gray-400 mt-2" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" />
+                    <Input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Nombre del grupo" className="mt-2 text-white placeholder:text-gray-400" />
                   </div>
 
                   <p className="text-sm text-muted-foreground">Con este grupo podrás pintar áreas en equipo, invitar gente con un enlace directo y gestionar miembros. Pago único de creación + 5€/mes por grupo.</p>
