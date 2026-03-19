@@ -480,18 +480,18 @@ export default function RankingsPage() {
               }} aria-label="Mes">
                 <Calendar className="w-4 h-4" />
               </Button>
-              <div
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 cursor-pointer flex-1 min-w-0"
-                onClick={() => {
-                  setShowMobileMenu(false);
-                  setShowGroupsDialog(true);
-                }}
-              >
-                <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                <span className="text-sm font-medium text-primary truncate">
-                  {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
-                </span>
-              </div>
+              <Button variant="ghost" size="icon" onClick={() => {
+                const next = !showGroupMenu;
+                setShowGroupMenu(next);
+                if (next) {
+                  setShowGroupsDialog(false);
+                  setShowJoinDialog(false);
+                  setShowCreateDialog(false);
+                }
+                setShowMobileMenu(false);
+              }} aria-label="Grupos">
+                <Users className="w-4 h-4" />
+              </Button>
               <Button variant="ghost" size="icon" onClick={async () => {
                 setShowMobileMenu(false);
                 try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); }
