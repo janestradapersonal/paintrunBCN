@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search, LogOut } from "lucide-react";
+import { Trophy, ArrowLeft, MapPin, Crown, Medal, Calendar, Map as MapIcon, ChevronLeft, ChevronRight, Award, Users, Zap, Percent, Search, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import type { Activity, MonthlyTitle } from "@shared/schema";
 import BarcelonaMap from "@/components/barcelona-map";
@@ -124,6 +124,7 @@ export default function RankingsPage() {
   const [, navigate] = useLocation();
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [showMobileMonth, setShowMobileMonth] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
   const [showGroupsDialog, setShowGroupsDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
@@ -456,57 +457,54 @@ export default function RankingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div ref={headerRef} className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div ref={headerRef} className="max-w-7xl mx-auto flex items-center justify-between gap-2 px-4 py-3">
+          {/* Logo - hidden when mobile menu is open */}
+          <div className={`flex items-center gap-3 ${showMobileMenu ? 'sm:flex hidden' : ''}`}>
             <span className="text-xl font-bold tracking-tight">
               <span className="text-primary">paint</span>run<span className="text-primary font-black">BCN</span>
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block">
-              <UserSearch className="w-48 lg:w-64" />
-            </div>
 
-            <div className="sm:hidden flex items-center gap-2">
+          {/* Mobile menu expanded content - replaces logo area */}
+          {showMobileMenu && (
+            <div className="flex items-center gap-2 sm:hidden flex-1">
               <Button variant="ghost" size="icon" onClick={() => {
-                const next = !showMobileSearch;
-                setShowMobileSearch(next);
-                if (next) {
-                  setShowMobileMonth(false);
-                  setShowGroupMenu(false);
-                  setShowGroupsDialog(false);
-                  setShowJoinDialog(false);
-                  setShowCreateDialog(false);
-                }
+                setShowMobileMenu(false);
+                setShowMobileSearch(true);
               }} aria-label="Buscar">
                 <Search className="w-4 h-4" />
               </Button>
-            </div>
-
-            {/* ContextSelector removed from header - use group menu instead */}
-
-            {/* mobile group button handled below (single entry) */}
-
-            <div className="hidden md:block">
-              <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
-            </div>
-
-            <div className="md:hidden flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={() => {
-                const next = !showMobileMonth;
-                setShowMobileMonth(next);
-                if (next) {
-                  setShowMobileSearch(false);
-                  setShowGroupMenu(false);
-                  setShowGroupsDialog(false);
-                  setShowJoinDialog(false);
-                  setShowCreateDialog(false);
-                }
+                setShowMobileMenu(false);
+                setShowMobileMonth(true);
               }} aria-label="Mes">
                 <Calendar className="w-4 h-4" />
               </Button>
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20 cursor-pointer flex-1 min-w-0"
+                onClick={() => {
+                  setShowMobileMenu(false);
+                  setShowGroupsDialog(true);
+                }}
+              >
+                <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                <span className="text-sm font-medium text-primary truncate">
+                  {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
+                </span>
+              </div>
+              <Button variant="ghost" size="icon" onClick={async () => {
+                setShowMobileMenu(false);
+                try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); }
+              }} aria-label="Cerrar sesión">
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
+          )}
 
+          {/* Desktop controls */}
+          <div className="hidden sm:flex items-center gap-3">
+            <UserSearch className="w-48 lg:w-64" />
+            <MonthSelector monthKey={monthKey} onChange={setMonthKey} />
             {/* Group name indicator */}
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
               <Users className="w-3.5 h-3.5 text-primary" />
@@ -514,76 +512,91 @@ export default function RankingsPage() {
                 {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
               </span>
             </div>
-
-            <div className="ml-2 flex items-center gap-1">
-              <Link href={`/profile/${user?.id}`}>
-                <Button variant="ghost" size="icon" aria-label="Mi perfil" className="px-2">
-                  <Avatar className="w-7 h-7">
-                    <AvatarFallback>{user?.username?.slice(0,2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </Link>
-              <Button variant="ghost" size="icon" onClick={async () => { try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); } }} aria-label="Cerrar sesión">
-                <LogOut className="w-4 h-4" />
+            <Link href={`/profile/${user?.id}`}>
+              <Button variant="ghost" size="icon" aria-label="Mi perfil" className="px-2">
+                <Avatar className="w-7 h-7">
+                  <AvatarFallback>{user?.username?.slice(0,2).toUpperCase()}</AvatarFallback>
+                </Avatar>
               </Button>
-              {/* groups nav removed (use group menu / ContextSelector) */}
-              <div>
-                <Button variant="ghost" size="icon" onClick={() => {
-                  const next = !showGroupMenu;
-                  setShowGroupMenu(next);
-                  if (next) {
-                    setShowMobileSearch(false);
-                    setShowMobileMonth(false);
-                    setShowGroupsDialog(false);
-                    setShowJoinDialog(false);
-                    setShowCreateDialog(false);
-                  }
-                }} aria-label="Grupos">
-                  <Users className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+            </Link>
+            <Button variant="ghost" size="icon" onClick={async () => { try { await logout(); localStorage.removeItem('contextSelector'); navigate('/login'); } catch { navigate('/login'); } }} aria-label="Cerrar sesión">
+              <LogOut className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => {
+              const next = !showGroupMenu;
+              setShowGroupMenu(next);
+              if (next) {
+                setShowGroupsDialog(false);
+                setShowJoinDialog(false);
+                setShowCreateDialog(false);
+              }
+            }} aria-label="Grupos">
+              <Users className="w-4 h-4" />
+            </Button>
           </div>
 
-          {showGroupMenu && groupMenuTop !== null && createPortal(
-            <div style={{ position: 'fixed', top: `${groupMenuTop}px`, right: '1rem', zIndex: 2147483000 }}>
-              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
-                <div className="flex flex-col gap-2">
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Ver grupos</Button>
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowJoinDialog(true); setShowGroupsDialog(false); setShowCreateDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Entrar grupo</Button>
-                  <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); setShowGroupsDialog(false); setShowJoinDialog(false); setShowMobileSearch(false); setShowMobileMonth(false); }}>Crear grupo (Pago)</Button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
+          {/* Mobile: Avatar + Hamburger menu */}
+          <div className="flex items-center gap-1 sm:hidden">
+            <Link href={`/profile/${user?.id}`}>
+              <Button variant="ghost" size="icon" aria-label="Mi perfil" className="px-2">
+                <Avatar className="w-7 h-7">
+                  <AvatarFallback>{user?.username?.slice(0,2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setShowMobileMenu(!showMobileMenu);
+                setShowMobileSearch(false);
+                setShowMobileMonth(false);
+              }}
+              aria-label="Menú"
+            >
+              {showMobileMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
+          </div>
+        </div>
 
-          {showMobileSearch && (
-            <div className="absolute left-4 right-4 top-full mt-2 z-[99999] sm:hidden">
-              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
-                <UserSearch />
+        {showGroupMenu && groupMenuTop !== null && createPortal(
+          <div style={{ position: 'fixed', top: `${groupMenuTop}px`, right: '1rem', zIndex: 2147483000 }}>
+            <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border w-56">
+              <div className="flex flex-col gap-2">
+                <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowGroupsDialog(true); setShowJoinDialog(false); setShowCreateDialog(false); }}>Ver grupos</Button>
+                <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowJoinDialog(true); setShowGroupsDialog(false); setShowCreateDialog(false); }}>Entrar grupo</Button>
+                <Button variant="ghost" onClick={() => { setShowGroupMenu(false); setShowCreateDialog(true); setShowGroupsDialog(false); setShowJoinDialog(false); }}>Crear grupo (Pago)</Button>
               </div>
             </div>
-          )}
+          </div>,
+          document.body
+        )}
 
-          {showMobileMonth && (
-            <div className="absolute left-4 top-full mt-2 z-[99999] sm:hidden">
-              <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
-                <MonthSelector monthKey={monthKey} onChange={(mk) => { setMonthKey(mk); setShowMobileMonth(false); }} />
-              </div>
+        {showMobileSearch && (
+          <div className="absolute left-4 right-4 top-full mt-2 z-[99999] sm:hidden">
+            <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+              <UserSearch />
             </div>
-          )}
+          </div>
+        )}
 
-          {/* mobile context handled via group menu below */}
-          {showGroupsDialog && (
-            <Dialog open={showGroupsDialog} onOpenChange={setShowGroupsDialog}>
-              <DialogContent className="z-[99999]">
-                <DialogHeader>
-                  <DialogTitle>Tus grupos</DialogTitle>
-                  <DialogDescription>Lista de grupos en los que estás activo.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2 mt-2">
-                  <div className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
+        {showMobileMonth && (
+          <div className="absolute left-4 top-full mt-2 z-[99999] sm:hidden">
+            <div className="bg-card/90 backdrop-blur-md rounded-md p-2 border border-border">
+              <MonthSelector monthKey={monthKey} onChange={(mk) => { setMonthKey(mk); setShowMobileMonth(false); }} />
+            </div>
+          </div>
+        )}
+
+        {showGroupsDialog && (
+          <Dialog open={showGroupsDialog} onOpenChange={setShowGroupsDialog}>
+            <DialogContent className="z-[99999]">
+              <DialogHeader>
+                <DialogTitle>Tus grupos</DialogTitle>
+                <DialogDescription>Lista de grupos en los que estás activo.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 mt-2">
+                <div className="flex items-center justify-between gap-2 p-2 rounded hover:bg-accent/10">
                     <div className="min-w-0">
                       <div className="font-medium">Barcelona</div>
                       <div className="text-[12px] text-muted-foreground">Competir contra toda Barcelona</div>
