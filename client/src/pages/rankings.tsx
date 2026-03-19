@@ -153,6 +153,38 @@ export default function RankingsPage() {
       return { type: "world" };
     }
   });
+  const [welcomeBanner, setWelcomeBanner] = useState<{ show: boolean; groupName: string; isFirstTime: boolean }>({ show: false, groupName: "", isFirstTime: false });
+  const prevGroupContextRef = useRef<{ type: "world" | "group"; groupId?: string } | null>(null);
+
+  // Check for pending welcome banner on mount (from group join via link/code)
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem('pendingWelcomeBanner');
+      if (pending) {
+        const data = JSON.parse(pending);
+        localStorage.removeItem('pendingWelcomeBanner');
+
+        // Mark group as visited
+        const visitedGroups = JSON.parse(localStorage.getItem("visitedGroups") || "[]");
+        if (data.groupId && !visitedGroups.includes(data.groupId)) {
+          const updatedVisited = [...visitedGroups, data.groupId];
+          localStorage.setItem("visitedGroups", JSON.stringify(updatedVisited));
+        }
+
+        setWelcomeBanner({
+          show: true,
+          groupName: data.groupName || "tu grupo",
+          isFirstTime: data.isFirstTime || false
+        });
+
+        // Auto-hide after 4 seconds
+        setTimeout(() => {
+          setWelcomeBanner(prev => ({ ...prev, show: false }));
+        }, 4000);
+      }
+    } catch (e) {}
+  }, []);
+
   const [tab, setTab] = useState<"global" | "neighborhoods" | "global-live">("global-live");
   const [monthKey, setMonthKey] = useState(getMonthKey(new Date()));
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -242,6 +274,62 @@ export default function RankingsPage() {
     },
     enabled: groupContext.type === "group" && !!groupContext.groupId,
   });
+
+  // Effect to detect group change and show welcome banner
+  useEffect(() => {
+    const prev = prevGroupContextRef.current;
+    const current = groupContext;
+
+    // Update reference
+    prevGroupContextRef.current = current;
+
+    // Skip on first render
+    if (prev === null) return;
+
+    // Check if group changed
+    const prevId = prev.type === "group" ? prev.groupId : "world";
+    const currentId = current.type === "group" ? current.groupId : "world";
+
+    if (prevId !== currentId) {
+      // Group or context changed
+      if (current.type === "world") {
+        setWelcomeBanner({ show: true, groupName: "Barcelona", isFirstTime: false });
+      } else if (current.type === "group" && current.groupId) {
+        // Check if there's a pending banner with the group name
+        let pendingData: { groupId?: string; groupName?: string; isFirstTime?: boolean } | null = null;
+        try {
+          const pending = localStorage.getItem('pendingWelcomeBanner');
+          if (pending) {
+            pendingData = JSON.parse(pending);
+            localStorage.removeItem('pendingWelcomeBanner');
+          }
+        } catch (e) {}
+
+        // Check if it's first time entering this group
+        const visitedGroups = JSON.parse(localStorage.getItem("visitedGroups") || "[]");
+        const isFirstTime = pendingData?.isFirstTime || !visitedGroups.includes(current.groupId);
+
+        if (isFirstTime && !visitedGroups.includes(current.groupId)) {
+          const updatedVisited = [...visitedGroups, current.groupId];
+          localStorage.setItem("visitedGroups", JSON.stringify(updatedVisited));
+        }
+
+        // Use pending data if available, otherwise fall back to myGroups or groupInfo
+        const name = pendingData?.groupName ||
+                     myGroups.find(g => g.id === current.groupId)?.name ||
+                     groupInfo?.name ||
+                     "tu grupo";
+        setWelcomeBanner({ show: true, groupName: name, isFirstTime });
+      }
+
+      // Auto-hide banner after 4 seconds
+      const timeout = setTimeout(() => {
+        setWelcomeBanner(prev => ({ ...prev, show: false }));
+      }, 4000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [groupContext, myGroups]);
 
   // Color palette for top N users in Global Live (distinct colors)
   const COLOR_PALETTE = [
@@ -419,7 +507,13 @@ export default function RankingsPage() {
               </Button>
             </div>
 
-            {/* group name removed from header per request */}
+            {/* Group name indicator */}
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
+              <Users className="w-3.5 h-3.5 text-primary" />
+              <span className="text-sm font-medium text-primary truncate max-w-[120px]">
+                {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
+              </span>
+            </div>
 
             <div className="ml-2 flex items-center gap-1">
               <Link href={`/profile/${user?.id}`}>
@@ -495,7 +589,7 @@ export default function RankingsPage() {
                       <div className="text-[12px] text-muted-foreground">Competir contra toda Barcelona</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={() => { setGroupContext({ type: 'world' }); setShowGroupsDialog(false); }}>Entrar</Button>
+                      <Button size="sm" onClick={() => { setGroupContext({ type: 'world' }); localStorage.setItem('contextSelector', JSON.stringify({ type: 'world' })); setShowGroupsDialog(false); }}>Entrar</Button>
                     </div>
                   </div>
 
@@ -660,6 +754,36 @@ export default function RankingsPage() {
           )}
         </div>
       </header>
+
+      {/* Welcome Banner */}
+      {welcomeBanner.show && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[9999] animate-in slide-in-from-top-5 fade-in duration-300">
+          <div className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground px-6 py-3 rounded-lg shadow-lg border border-primary/30 flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 bg-white/20 rounded-full">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-lg">
+                {welcomeBanner.isFirstTime ? "¡Bienvenido al grupo " : "Ahora estás en "}
+                {welcomeBanner.groupName}
+                {welcomeBanner.isFirstTime ? "!" : ""}
+              </p>
+              {welcomeBanner.isFirstTime && (
+                <p className="text-sm opacity-90">Compite con los miembros del grupo</p>
+              )}
+            </div>
+            <button
+              onClick={() => setWelcomeBanner(prev => ({ ...prev, show: false }))}
+              className="ml-2 p-1 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Cerrar"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">

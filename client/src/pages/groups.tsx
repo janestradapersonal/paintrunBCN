@@ -60,10 +60,17 @@ export default function GroupsPage() {
               // set context and go to rankings
               if (data.group && data.group.id) {
                 localStorage.setItem('contextSelector', JSON.stringify({ type: 'group', groupId: data.group.id }));
-                try {
-                  toast({ title: "Ahora estás en el grupo", description: data.group?.name || "" });
-                } catch (e) {}
-                // Stay on the groups page so the user sees the group in "Ver grupos"
+                // Mark as first time joining for welcome banner
+                const visitedGroups = JSON.parse(localStorage.getItem("visitedGroups") || "[]");
+                if (!visitedGroups.includes(data.group.id)) {
+                  localStorage.setItem('pendingWelcomeBanner', JSON.stringify({
+                    groupId: data.group.id,
+                    groupName: data.group.name || "tu grupo",
+                    isFirstTime: true
+                  }));
+                }
+                // Redirect to rankings to show the banner
+                window.location.href = '/rankings';
               }
             }
           } catch (e) {}

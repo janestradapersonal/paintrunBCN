@@ -2,10 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
 
 export default function GroupModal({ onCreated }: { onCreated?: (groupId: string) => void }) {
-  const { toast } = useToast();
   const [inviteCode, setInviteCode] = useState("");
   const [groupName, setGroupName] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
@@ -27,11 +25,20 @@ export default function GroupModal({ onCreated }: { onCreated?: (groupId: string
         setJoinError(err || "Error");
       } else {
         const data = await res.json();
+
+        // Save pending welcome banner for rankings page to display
+        const visitedGroups = JSON.parse(localStorage.getItem("visitedGroups") || "[]");
+        const isFirstTime = data.groupId && !visitedGroups.includes(data.groupId);
+        if (isFirstTime && data.groupId) {
+          localStorage.setItem('pendingWelcomeBanner', JSON.stringify({
+            groupId: data.groupId,
+            groupName: data.group?.name || data.name || "tu grupo",
+            isFirstTime: true
+          }));
+        }
+
         onCreated?.(data.groupId);
-        try {
-          toast({ title: "Ahora estás en el grupo", description: data.group?.name || data.name || "" });
-        } catch (e) {}
-        // Stay in-app; parent will handle navigation or UI update.
+        // Parent will handle navigation/UI update; banner will show from pendingWelcomeBanner
       }
     } catch (e: any) {
       setJoinError(e?.message || "Error");
