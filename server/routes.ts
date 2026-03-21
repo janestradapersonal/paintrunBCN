@@ -31,7 +31,7 @@ async function sendVerificationEmail(email: string, code: string): Promise<boole
   try {
     await sgMail.send({
       to: email,
-      from: "janestrada888@gmail.com",
+      from: process.env.SENDGRID_FROM_EMAIL || "no-reply@localhost",
       subject: "Tu código de verificación - paintrunBCN",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #1a1a2e; color: #ffffff; border-radius: 12px;">

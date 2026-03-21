@@ -158,17 +158,6 @@ export function calculateDistance(coordinates: number[][]): number {
 export function detectClosedLoop(coordinates: number[][]): number[][] | null {
   if (coordinates.length < 10) return null;
 
-  const start = coordinates[0];
-  const end = coordinates[coordinates.length - 1];
-
-  const distStartEnd = turf.distance(
-    turf.point(start),
-    turf.point(end),
-    { units: "meters" }
-  );
-
-  if (distStartEnd > 500) return null;
-
   const closedCoords = [...coordinates, coordinates[0]];
 
   try {
