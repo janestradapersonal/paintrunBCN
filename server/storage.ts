@@ -58,7 +58,23 @@ export interface IStorage {
   getGlobalLiveRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
   getGlobalLiveTerritories(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
   incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[], groupId?: string): Promise<void>;
-  getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]>;
+  getLivePointsRanking(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]>;
+
+  // Push Notifications
+  savePushSubscription(userId: string, subscription: { endpoint: string; keys: { auth: string; p256dh: string } }): Promise<void>;
+  getUserPushSubscriptions(userId: string): Promise<{ id: string; endpoint: string; authKey: string; p256dhKey: string }[]>;
+  deletePushSubscription(subscriptionId: string): Promise<void>;
+
+  // Groups
+  getGroupsForUser(userId: string): Promise<{ id: string; name: string; inviteCode: string; role: string; status: string; createdAt: Date }[]>;
+  getGroupMembers(groupId: string): Promise<{ id: string; username: string }[]>;
+  createGroup(name: string, ownerUserId: string, inviteCode: string, stripeSubscriptionId?: string): Promise<string | undefined>;
+  findGroupByInviteCode(inviteCode: string): Promise<any | undefined>;
+  addGroupMember(groupId: string, userId: string, role?: string): Promise<void>;
+  removeGroupMember(groupId: string, userId: string): Promise<void>;
+  updateGroupName(groupId: string, name: string): Promise<void>;
+  saveLastMonthRankings(rankings: Array<{ monthKey: string; groupId: string | null; userId: string; rank: number; points: number }>): Promise<void>;
+  getLastMonthRankings(monthKey: string, groupId?: string): Promise<{ monthKey: string; groupId: string | null; userId: string; rank: number; points: number }[]>;
 
   getStravaToken(userId: string): Promise<StravaToken | undefined>;
   getStravaTokenByAthleteId(athleteId: number): Promise<StravaToken | undefined>;
@@ -695,6 +711,121 @@ export class DatabaseStorage implements IStorage {
 
   async markGroupsInactiveBySubscriptionId(subscriptionId: string): Promise<void> {
     await db.execute(sql`UPDATE groups SET status = 'inactive' WHERE stripe_subscription_id = ${subscriptionId}`);
+  }
+
+  // ===== PUSH NOTIFICATIONS & SUBSCRIPTIONS =====
+
+  async savePushSubscription(
+    userId: string,
+    subscription: { endpoint: string; keys: { auth: string; p256dh: string } }
+  ): Promise<void> {
+    try {
+      await db.execute(sql`
+        INSERT INTO push_subscriptions (user_id, endpoint, auth_key, p256dh_key, created_at)
+        VALUES (${userId}, ${subscription.endpoint}, ${subscription.keys.auth}, ${subscription.keys.p256dh}, NOW())
+        ON CONFLICT (user_id, endpoint) DO UPDATE SET
+          updated_at = NOW();
+      `);
+    } catch (err) {
+      console.error("[Storage] Error saving push subscription:", err);
+    }
+  }
+
+  async getUserPushSubscriptions(userId: string): Promise<{ id: string; endpoint: string; authKey: string; p256dhKey: string }[]> {
+    try {
+      const q = await db.execute(sql`
+        SELECT id, endpoint, auth_key as "authKey", p256dh_key as "p256dhKey"
+        FROM push_subscriptions
+        WHERE user_id = ${userId}
+      `);
+      return (q.rows as any[]) || [];
+    } catch (err) {
+      console.error("[Storage] Error fetching push subscriptions:", err);
+      return [];
+    }
+  }
+
+  async deletePushSubscription(subscriptionId: string): Promise<void> {
+    try {
+      await db.execute(sql`DELETE FROM push_subscriptions WHERE id = ${subscriptionId}`);
+    } catch (err) {
+      console.error("[Storage] Error deleting push subscription:", err);
+    }
+  }
+
+  // ===== GROUP FUNCTIONS =====
+
+  async getGroupMembers(groupId: string): Promise<{ id: string; username: string }[]> {
+    try {
+      const q = await db.execute(sql`
+        SELECT u.id, u.username
+        FROM users u
+        JOIN group_members gm ON gm.user_id = u.id
+        WHERE gm.group_id = ${groupId}
+        ORDER BY u.username ASC
+      `);
+      return (q.rows as any[]) || [];
+    } catch (err) {
+      console.error("[Storage] Error fetching group members:", err);
+      return [];
+    }
+  }
+
+  async createGroup(
+    name: string,
+    ownerUserId: string,
+    inviteCode: string,
+    stripeSubscriptionId?: string
+  ): Promise<string | undefined> {
+    try {
+      const result = await db.execute(sql`
+        INSERT INTO groups (name, owner_user_id, invite_code, stripe_subscription_id, status, created_at)
+        VALUES (${name}, ${ownerUserId}, ${inviteCode}, ${stripeSubscriptionId}, 'active', NOW())
+        RETURNING id
+      `);
+      return result.rows?.[0]?.id;
+    } catch (err) {
+      console.error("[Storage] Error creating group:", err);
+      return undefined;
+    }
+  }
+
+  // ===== RANKING HISTORY =====
+
+  async saveLastMonthRankings(
+    rankings: Array<{ monthKey: string; groupId: string | null; userId: string; rank: number; points: number }>
+  ): Promise<void> {
+    try {
+      for (const ranking of rankings) {
+        await db.execute(sql`
+          INSERT INTO last_month_rankings (month_key, group_id, user_id, rank, points, updated_at)
+          VALUES (${ranking.monthKey}, ${ranking.groupId}, ${ranking.userId}, ${ranking.rank}, ${ranking.points}, NOW())
+          ON CONFLICT (month_key, group_id, user_id) DO UPDATE SET
+            rank = ${ranking.rank},
+            points = ${ranking.points},
+            updated_at = NOW()
+        `);
+      }
+    } catch (err) {
+      console.error("[Storage] Error saving ranking history:", err);
+    }
+  }
+
+  async getLastMonthRankings(
+    monthKey: string,
+    groupId?: string
+  ): Promise<{ monthKey: string; groupId: string | null; userId: string; rank: number; points: number }[]> {
+    try {
+      let query = `SELECT month_key as "monthKey", group_id as "groupId", user_id as "userId", rank, points FROM last_month_rankings WHERE month_key = ${monthKey}`;
+      if (groupId) {
+        query += ` AND group_id = ${groupId}`;
+      }
+      const q = await db.execute(sql`${sql.raw(query)}`);
+      return (q.rows as any[]) || [];
+    } catch (err) {
+      console.error("[Storage] Error fetching ranking history:", err);
+      return [];
+    }
   }
 }
 

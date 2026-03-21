@@ -107,6 +107,42 @@ export const stravaTokens = pgTable("strava_tokens", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const pendingNotifications = pgTable("pending_notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  groupId: varchar("group_id").references(() => groups.id),
+  notificationType: text("notification_type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  data: jsonb("data").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  isDelivered: boolean("is_delivered").notNull().default(false),
+  deliveredAt: timestamp("delivered_at"),
+});
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  endpoint: text("endpoint").notNull(),
+  authKey: text("auth_key").notNull(),
+  p256dhKey: text("p256dh_key").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique().on(table.userId, table.endpoint),
+]);
+
+export const lastMonthRankings = pgTable("last_month_rankings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  monthKey: text("month_key").notNull(),
+  groupId: varchar("group_id").references(() => groups.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  rank: integer("rank"),
+  points: real("points"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  unique().on(table.monthKey, table.groupId, table.userId),
+]);
+
 export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   username: true,
