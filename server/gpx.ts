@@ -156,23 +156,34 @@ export function calculateDistance(coordinates: number[][]): number {
 }
 
 export function detectClosedLoop(coordinates: number[][]): number[][] | null {
-  if (coordinates.length < 4) return null;
+  if (coordinates.length < 3) return null;
 
   const closedCoords = [...coordinates, coordinates[0]];
 
   try {
+    // Try simplifying first
     const polygon = turf.polygon([closedCoords]);
     const simplified = turf.simplify(polygon, { tolerance: 0.00001, highQuality: true });
-    const coords = simplified.geometry.coordinates[0];
+    let coords = simplified.geometry.coordinates[0];
+
+    // If simplified coordinates are too few, use original closed coords
+    if (coords.length < 3) {
+      coords = closedCoords;
+    }
+
     if (coords.length < 3) return null;
     return coords;
   } catch {
+    // If simplification fails, return original closed coords
+    if (closedCoords.length >= 3) {
+      return closedCoords;
+    }
     return null;
   }
 }
 
 export function calculateArea(polygon: number[][]): number {
-  if (!polygon || polygon.length < 4) return 0;
+  if (!polygon || polygon.length < 3) return 0;
   try {
     const poly = turf.polygon([polygon]);
     return turf.area(poly);
