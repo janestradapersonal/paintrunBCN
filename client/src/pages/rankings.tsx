@@ -127,6 +127,7 @@ export default function RankingsPage() {
   const [showMobileMonth, setShowMobileMonth] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [showGroupsMenuDialog, setShowGroupsMenuDialog] = useState(false);
   const [showGroupsDialog, setShowGroupsDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -489,7 +490,7 @@ export default function RankingsPage() {
               </Button>
               <Button variant="ghost" size="icon" onClick={() => {
                 setShowMobileMenu(false);
-                setShowGroupsDialog(true);
+                setShowGroupsMenuDialog(true);
               }} aria-label="Grupos">
                 <Users className="w-4 h-4" />
               </Button>
@@ -565,6 +566,22 @@ export default function RankingsPage() {
             </div>
           </div>,
           document.body
+        )}
+
+        {showGroupsMenuDialog && (
+          <Dialog open={showGroupsMenuDialog} onOpenChange={setShowGroupsMenuDialog}>
+            <DialogContent className="z-[99999]">
+              <DialogHeader>
+                <DialogTitle>Gestionar grupos</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-2">
+                <Button variant="outline" className="justify-start" onClick={() => { setShowGroupsMenuDialog(false); setShowGroupsDialog(true); }}>Ver grupos</Button>
+                <Button variant="outline" className="justify-start" onClick={() => { setShowGroupsMenuDialog(false); setShowJoinDialog(true); }}>Entrar grupo</Button>
+                <Button variant="outline" className="justify-start" onClick={() => { setShowGroupsMenuDialog(false); setShowCreateDialog(true); }}>Crear grupo (Pago)</Button>
+              </div>
+              <DialogFooter />
+            </DialogContent>
+          </Dialog>
         )}
 
         {showMobileSearch && (
