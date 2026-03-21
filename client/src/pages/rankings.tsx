@@ -467,6 +467,16 @@ export default function RankingsPage() {
             </span>
           </div>
 
+          {/* Mobile: Group name indicator - shown when menu is closed */}
+          {!showMobileMenu && (
+            <div className="flex sm:hidden items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/20">
+              <Users className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+              <span className="text-sm font-medium text-primary truncate">
+                {groupContext.type === "world" ? "Barcelona" : (groupInfo?.name || myGroups.find(g => g.id === groupContext.groupId)?.name || "Grupo")}
+              </span>
+            </div>
+          )}
+
           {/* Mobile menu expanded content - replaces logo area */}
           {showMobileMenu && (
             <div className="flex items-center gap-2 sm:hidden flex-1">
