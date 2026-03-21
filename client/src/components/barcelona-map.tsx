@@ -250,7 +250,7 @@ export default function BarcelonaMap({
         zoomControl={interactive}
         dragging={interactive}
         scrollWheelZoom={interactive}
-        doubleClickZoom={interactive}
+        doubleClickZoom={false}
         touchZoom={interactive}
         style={{ background: "hsl(0, 0%, 8%)" }}
       >
