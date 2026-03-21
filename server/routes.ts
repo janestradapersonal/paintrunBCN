@@ -312,11 +312,21 @@ export async function registerRoutes(
 
       const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-      const [prt] = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.tokenHash, tokenHash));
+      const results = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.tokenHash, tokenHash));
+      const prt = results.length > 0 ? results[0] : null;
 
-      if (!prt) return res.status(400).json({ error: "Token inválido o expirado" });
-      if (prt.usedAt) return res.status(400).json({ error: "Token inválido o expirado" });
-      if (new Date(prt.expiresAt) < new Date()) return res.status(400).json({ error: "Token inválido o expirado" });
+      if (!prt) {
+        console.log(`[paintrunBCN] Reset-password: token not found for hash`);
+        return res.status(400).json({ error: "Token inválido o expirado" });
+      }
+      if (prt.usedAt) {
+        console.log(`[paintrunBCN] Reset-password: token already used`);
+        return res.status(400).json({ error: "Token inválido o expirado" });
+      }
+      if (new Date(prt.expiresAt) < new Date()) {
+        console.log(`[paintrunBCN] Reset-password: token expired`);
+        return res.status(400).json({ error: "Token inválido o expirado" });
+      }
 
       // hash new password
       const newHash = await bcrypt.hash(newPassword, 10);
@@ -327,6 +337,7 @@ export async function registerRoutes(
       // mark token used
       await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, prt.id));
 
+      console.log(`[paintrunBCN] Reset-password: password updated for user ${prt.userId}`);
       return res.json({ message: "Contraseña actualizada" });
     } catch (error: any) {
       console.error("Reset-password error:", error);

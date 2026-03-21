@@ -32,11 +32,22 @@ export default function ResetPasswordPage() {
       setMessage('Las contraseñas no coinciden');
       return;
     }
+    if (values.newPassword.length < 6) {
+      setMessage('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
     setIsPending(true);
     try {
-      const res = await fetch('/api/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, newPassword: values.newPassword }) });
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: values.newPassword }),
+        credentials: 'include'
+      });
+
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setMessage(data?.error || 'Token inválido o expirado');
       } else {
         setMessage('Contraseña actualizada. Puedes iniciar sesión con tu nueva contraseña.');
