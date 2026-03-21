@@ -424,7 +424,7 @@ export class DatabaseStorage implements IStorage {
     const result = new Map<string, { polygons: any[]; totalArea: number }>();
 
     const withPolygons = monthActivities
-      .filter(a => a.polygon && (a.polygon as number[][]).length >= 4)
+      .filter(a => a.polygon && (a.polygon as number[][]).length >= 3)
       .sort((a, b) => new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime());
 
     if (withPolygons.length === 0) return result;
@@ -436,7 +436,7 @@ export class DatabaseStorage implements IStorage {
         const closed = coords[0][0] === coords[coords.length - 1][0] && coords[0][1] === coords[coords.length - 1][1]
           ? coords
           : [...coords, coords[0]];
-        if (closed.length < 4) continue;
+        if (closed.length < 3) continue;
         const poly = turf.polygon([closed]);
         activityPolygons.push({ userId: act.userId, turfPoly: poly, uploadedAt: new Date(act.uploadedAt) });
       } catch {
