@@ -10,7 +10,7 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string, expir
     return false;
   }
 
-  const from = process.env.SENDGRID_FROM_EMAIL || "no-reply@localhost";
+  const from = "janestrada888@gmail.com";
   try {
     const disableClickTracking = (process.env.DISABLE_SENDGRID_CLICK_TRACKING === 'true');
 
