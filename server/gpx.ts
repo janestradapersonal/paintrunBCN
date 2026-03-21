@@ -156,15 +156,15 @@ export function calculateDistance(coordinates: number[][]): number {
 }
 
 export function detectClosedLoop(coordinates: number[][]): number[][] | null {
-  if (coordinates.length < 10) return null;
+  if (coordinates.length < 4) return null;
 
   const closedCoords = [...coordinates, coordinates[0]];
 
   try {
     const polygon = turf.polygon([closedCoords]);
-    const simplified = turf.simplify(polygon, { tolerance: 0.0001, highQuality: true });
+    const simplified = turf.simplify(polygon, { tolerance: 0.00001, highQuality: true });
     const coords = simplified.geometry.coordinates[0];
-    if (coords.length < 4) return null;
+    if (coords.length < 3) return null;
     return coords;
   } catch {
     return null;
