@@ -251,7 +251,7 @@ export default function BarcelonaMap({
         dragging={interactive}
         scrollWheelZoom={interactive}
         doubleClickZoom={false}
-        touchZoom={interactive}
+        touchZoom={false}
         style={{ background: "hsl(0, 0%, 8%)" }}
       >
         <MapResizeHandler containerRef={containerRef} />
