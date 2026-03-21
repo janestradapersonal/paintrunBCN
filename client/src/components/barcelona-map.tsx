@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, GeoJSON, Polygon, Polyline, useMap } from "rea
 import L from "leaflet";
 import type { FeatureCollection } from "geojson";
 import type { Activity } from "@shared/schema";
+import { Maximize2, Minimize2 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
 const BARCELONA_CENTER: [number, number] = [41.3874, 2.1686];
@@ -42,6 +43,45 @@ function MapBounds() {
   return null;
 }
 
+function FullscreenControl({
+  containerRef,
+  isFullscreen
+}: {
+  containerRef: React.RefObject<HTMLElement | null>;
+  isFullscreen: boolean;
+}) {
+  const toggleFullscreen = async () => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    try {
+      if (!document.fullscreenElement) {
+        await container.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error("Fullscreen error:", err);
+    }
+  };
+
+  return (
+    <div className="absolute top-4 right-4 z-[1001] flex gap-1">
+      <button
+        onClick={toggleFullscreen}
+        className="bg-white dark:bg-gray-800 rounded p-2 shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+        title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+      >
+        {isFullscreen ? (
+          <Minimize2 className="w-5 h-5 text-gray-800 dark:text-white" />
+        ) : (
+          <Maximize2 className="w-5 h-5 text-gray-800 dark:text-white" />
+        )}
+      </button>
+    </div>
+  );
+}
+
 function getIntensityOpacity(count: number): number {
   if (count <= 1) return 0.25;
   if (count === 2) return 0.4;
@@ -70,7 +110,17 @@ export default function BarcelonaMap({
   onLeaveTerritory = undefined,
 }: BarcelonaMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   function MapResizeHandler({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
     const map = useMap();
@@ -180,13 +230,23 @@ export default function BarcelonaMap({
   const renderedPolygonKeys = new Set<string>();
 
   return (
-    <div ref={containerRef} className={`relative map-explicit-height ${className}`} data-testid="map-container" style={!interactive ? { pointerEvents: "none" } : undefined}>
+    <div ref={containerRef} className={`relative map-explicit-height ${className}`} data-testid="map-container" style={{
+      ...(isFullscreen ? {
+        width: "100vw",
+        height: "100vh",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        zIndex: 9999,
+      } : {}),
+      ...((!interactive) ? { pointerEvents: "none" } : {}),
+    }}>
       <MapContainer
         center={BARCELONA_CENTER}
         zoom={BARCELONA_ZOOM}
         minZoom={12}
         maxZoom={18}
-        className="w-full h-full rounded-md"
+        className={`w-full h-full ${isFullscreen ? "" : "rounded-md"}`}
         zoomControl={interactive}
         dragging={interactive}
         scrollWheelZoom={interactive}
@@ -336,6 +396,7 @@ export default function BarcelonaMap({
           });
         })}
       </MapContainer>
+      <FullscreenControl containerRef={containerRef} isFullscreen={isFullscreen} />
       {intensityMode && activities.some(a => a.polygon) && (
         <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm rounded-md p-3 text-xs z-[1000]">
           <p className="font-semibold mb-1.5 text-foreground">Intensidad</p>
