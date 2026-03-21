@@ -57,13 +57,36 @@ export const monthlyTitles = pgTable("monthly_titles", {
   areaSqMeters: real("area_sq_meters").notNull().default(0),
 });
 
+export const groups = pgTable("groups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id),
+  inviteCode: text("invite_code").notNull().unique(),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const groupMembers = pgTable("group_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  groupId: varchar("group_id").notNull().references(() => groups.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: text("role").notNull().default("member"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique().on(table.groupId, table.userId),
+]);
+
 export const livePoints = pgTable("live_points", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
   monthKey: text("month_key").notNull(),
+  groupId: varchar("group_id").references(() => groups.id),
   points: real("points").notNull().default(0),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  unique().on(table.userId, table.monthKey, table.groupId),
+]);
 
 export const follows = pgTable("follows", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

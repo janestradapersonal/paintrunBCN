@@ -4,6 +4,7 @@ import { storage, db } from "./storage";
 import { registerSchema, loginSchema, verifySchema } from "@shared/schema";
 import { parseGPX, calculateDistance, detectClosedLoop, calculateArea, detectNeighborhood, getMonthKey } from "./gpx";
 import { seedDatabase } from "./seed";
+import { sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
@@ -588,10 +589,29 @@ export async function registerRoutes(
   async function awardPointsTick() {
     try {
       const monthKey = getMonthKey();
-      const live = await storage.getGlobalLiveRankings(monthKey);
-      const increments = live.map(u => ({ userId: u.userId, points: (u.territorySqMeters || 0) / 1_000_000 }));
-      await storage.incrementPointsForMonth(monthKey, increments);
-      console.log(`[Points] Awarded points for ${monthKey} to ${increments.length} users`);
+
+      // First, award points for the global group (groupId = null)
+      const globalLive = await storage.getGlobalLiveRankings(monthKey);
+      const globalIncrements = globalLive.map(u => ({ userId: u.userId, points: (u.territorySqMeters || 0) / 1_000_000 }));
+      await storage.incrementPointsForMonth(monthKey, globalIncrements);
+      console.log(`[Points] Awarded global points for ${monthKey} to ${globalIncrements.length} users`);
+
+      // Then, award points for each private group
+      const groupsQuery = await db.execute(sql`SELECT DISTINCT g.id, g.name FROM groups g ORDER BY g.created_at ASC`);
+      const groups = (groupsQuery.rows || []) as Array<{ id: string; name: string }>;
+
+      for (const group of groups) {
+        const groupId = group.id;
+        const groupName = group.name;
+        try {
+          const groupLive = await storage.getGlobalLiveRankings(monthKey, groupId);
+          const groupIncrements = groupLive.map(u => ({ userId: u.userId, points: (u.territorySqMeters || 0) / 1_000_000 }));
+          await storage.incrementPointsForMonth(monthKey, groupIncrements, groupId);
+          console.log(`[Points] Awarded points for group "${groupName}" (${monthKey}) to ${groupIncrements.length} users`);
+        } catch (groupErr: any) {
+          console.error(`[Points] Error awarding points for group ${groupId}:`, groupErr?.message || groupErr);
+        }
+      }
     } catch (err: any) {
       console.error("[Points] Error awarding points:", err?.message || err);
     }

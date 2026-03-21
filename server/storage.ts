@@ -1,7 +1,7 @@
 import { eq, desc, sql, and, or, ilike, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { users, activities, verificationCodes, monthlyTitles, follows, stravaTokens, livePoints, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow, type StravaToken } from "@shared/schema";
+import { users, activities, verificationCodes, monthlyTitles, follows, stravaTokens, livePoints, groups, groupMembers, type User, type Activity, type VerificationCode, type MonthlyTitle, type Follow, type StravaToken } from "@shared/schema";
 import * as turf from "@turf/turf";
 
 const pool = new pg.Pool({
@@ -57,7 +57,7 @@ export interface IStorage {
 
   getGlobalLiveRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]>;
   getGlobalLiveTerritories(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]>;
-  incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[]): Promise<void>;
+  incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[], groupId?: string): Promise<void>;
   getLivePointsRanking(monthKey: string): Promise<{ userId: string; username: string; paintColor: string; points: number; rank: number }[]>;
 
   getStravaToken(userId: string): Promise<StravaToken | undefined>;
@@ -575,16 +575,23 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[]): Promise<void> {
+  async incrementPointsForMonth(monthKey: string, increments: { userId: string; points: number }[], groupId?: string): Promise<void> {
     // For each increment, upsert into livePoints: add points to existing row or create it.
+    // If groupId is provided, store points per group. If not provided, store global points (groupId = null).
     const now = new Date();
     await db.transaction(async (trx) => {
       for (const inc of increments) {
-        const [existing] = await trx.select().from(livePoints).where(and(eq(livePoints.userId, inc.userId), eq(livePoints.monthKey, monthKey)));
+        const [existing] = await trx.select().from(livePoints).where(
+          and(
+            eq(livePoints.userId, inc.userId),
+            eq(livePoints.monthKey, monthKey),
+            groupId ? eq(livePoints.groupId, groupId) : sql`${livePoints.groupId} IS NULL`
+          )
+        );
         if (existing) {
           await trx.update(livePoints).set({ points: Number(existing.points || 0) + inc.points, updatedAt: now }).where(eq(livePoints.id, existing.id));
         } else {
-          await trx.insert(livePoints).values({ userId: inc.userId, monthKey, points: inc.points }).returning();
+          await trx.insert(livePoints).values({ userId: inc.userId, monthKey, groupId: groupId || null, points: inc.points }).returning();
         }
       }
     });
@@ -597,7 +604,7 @@ export class DatabaseStorage implements IStorage {
         SELECT u.id as userId, u.username as username, u.paint_color as paintColor, COALESCE(lp.points,0) as points
         FROM users u
         JOIN group_members gm ON gm.user_id = u.id AND gm.group_id = ${groupId}
-        LEFT JOIN live_points lp ON lp.user_id = u.id AND lp.month_key = ${monthKey}
+        LEFT JOIN live_points lp ON lp.user_id = u.id AND lp.month_key = ${monthKey} AND lp.group_id = ${groupId}
         ORDER BY COALESCE(lp.points,0) DESC, u.username ASC
       `);
       const rows = q.rows || [];
@@ -607,7 +614,7 @@ export class DatabaseStorage implements IStorage {
     const results = await db
       .select({ userId: users.id, username: users.username, paintColor: users.paintColor, points: sql<number>`COALESCE(${livePoints.points}, 0)` })
       .from(users)
-      .leftJoin(livePoints, and(eq(livePoints.userId, users.id), eq(livePoints.monthKey, monthKey)))
+      .leftJoin(livePoints, and(eq(livePoints.userId, users.id), eq(livePoints.monthKey, monthKey), sql`${livePoints.groupId} IS NULL`))
       .groupBy(users.id, users.username, users.paintColor, livePoints.points)
       .orderBy(desc(sql`COALESCE(${livePoints.points}, 0)`), asc(users.username));
 
