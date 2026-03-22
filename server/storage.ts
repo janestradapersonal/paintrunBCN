@@ -468,9 +468,7 @@ export class DatabaseStorage implements IStorage {
         const later = activityPolygons[j];
         if (later.userId === act.userId) continue;
         try {
-          const diff = turf.difference(
-            turf.featureCollection([remaining, later.turfPoly])
-          );
+          const diff = turf.difference(remaining, later.turfPoly);
           if (!diff) {
             remaining = null;
             break;
