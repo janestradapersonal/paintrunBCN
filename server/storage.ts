@@ -511,13 +511,11 @@ export class DatabaseStorage implements IStorage {
   async getGlobalLiveRankings(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[]> {
     const BARCELONA_AREA_SQM = 101_400_000;
 
-    // If a groupId is provided, only consider activities from users in that group
-    const monthActivities = groupId
-      ? (await db.execute(sql`SELECT * FROM activities a WHERE a.month_key = ${monthKey} AND a.user_id IN (SELECT user_id FROM group_members WHERE group_id = ${groupId}) ORDER BY a.uploaded_at ASC`)).rows
-      : await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
+    // ALWAYS get ALL activities for the month to compute territories correctly
+    // Each user's territory needs to account for ALL overlaps, not just intra-group overlaps
+    const monthActivities = await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
 
-    // Fetch all verified users so we can include those with 0 territory.
-    // Determine which users to include: either all verified users or only group members
+    // But only show users who are members of the specified group (or all users if no groupId)
     let usersList: any[] = [];
     if (groupId) {
       const q = await db.execute(sql`SELECT u.id, u.username, u.paint_color as paintColor FROM users u JOIN group_members gm ON gm.user_id = u.id WHERE gm.group_id = ${groupId} ORDER BY u.username ASC`);
@@ -531,7 +529,15 @@ export class DatabaseStorage implements IStorage {
       userMap.set(u.id, { username: u.username, paintColor: u.paintColor });
     }
 
-    const territories = this.computeTerritories(monthActivities, userMap);
+    // Compute territories using ALL activities and users (to get correct overlaps)
+    const allUsersMap = new Map<string, { username: string; paintColor: string }>();
+    const allUserIds = new Set(monthActivities.map(a => a.userId));
+    for (const uid of allUserIds) {
+      const [u] = await db.select({ username: users.username, paintColor: users.paintColor }).from(users).where(eq(users.id, uid));
+      if (u) allUsersMap.set(uid, u);
+    }
+
+    const territories = this.computeTerritories(monthActivities, allUsersMap);
 
     const rankings: { userId: string; username: string; paintColor: string; territorySqMeters: number; territoryPercent: number; rank: number }[] = [];
     for (const u of usersList) {
@@ -559,9 +565,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGlobalLiveTerritories(monthKey: string, groupId?: string): Promise<{ userId: string; username: string; paintColor: string; polygons: number[][][] }[]> {
-    const monthActivities = groupId
-      ? (await db.execute(sql`SELECT * FROM activities a WHERE a.month_key = ${monthKey} AND a.user_id IN (SELECT user_id FROM group_members WHERE group_id = ${groupId}) ORDER BY a.uploaded_at ASC`)).rows
-      : await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
+    // ALWAYS get activities from ALL users for the month (not filtered by group)
+    // This ensures each user's territory is calculated correctly regardless of which group is asking
+    const monthActivities = await db.select().from(activities).where(eq(activities.monthKey, monthKey)).orderBy(asc(activities.uploadedAt));
 
     const userIdSet = new Set(monthActivities.map(a => a.userId));
     const userIds = Array.from(userIdSet);
@@ -575,11 +581,19 @@ export class DatabaseStorage implements IStorage {
 
     const territories = this.computeTerritories(monthActivities, userMap);
 
+    // If groupId provided, only include users who are members of that group
+    let userIdsToShow = userIds;
+    if (groupId) {
+      const groupMembersQuery = await db.execute(sql`SELECT user_id FROM group_members WHERE group_id = ${groupId}`);
+      const groupMemberIds = new Set((groupMembersQuery.rows || []).map((r: any) => r.user_id));
+      userIdsToShow = userIds.filter(id => groupMemberIds.has(id));
+    }
+
     const result: { userId: string; username: string; paintColor: string; polygons: number[][][] }[] = [];
-    const terrEntries = Array.from(territories.entries());
-    for (const [userId, data] of terrEntries) {
+    for (const userId of userIdsToShow) {
+      const data = territories.get(userId);
       const userInfo = userMap.get(userId);
-      if (!userInfo || data.polygons.length === 0) continue;
+      if (!userInfo || !data || data.polygons.length === 0) continue;
       result.push({
         userId,
         username: userInfo.username,
@@ -753,43 +767,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // ===== GROUP FUNCTIONS =====
-
-  async getGroupMembers(groupId: string): Promise<{ id: string; username: string }[]> {
-    try {
-      const q = await db.execute(sql`
-        SELECT u.id, u.username
-        FROM users u
-        JOIN group_members gm ON gm.user_id = u.id
-        WHERE gm.group_id = ${groupId}
-        ORDER BY u.username ASC
-      `);
-      return (q.rows as any[]) || [];
-    } catch (err) {
-      console.error("[Storage] Error fetching group members:", err);
-      return [];
-    }
-  }
-
-  async createGroup(
-    name: string,
-    ownerUserId: string,
-    inviteCode: string,
-    stripeSubscriptionId?: string
-  ): Promise<string | undefined> {
-    try {
-      const result = await db.execute(sql`
-        INSERT INTO groups (name, owner_user_id, invite_code, stripe_subscription_id, status, created_at)
-        VALUES (${name}, ${ownerUserId}, ${inviteCode}, ${stripeSubscriptionId}, 'active', NOW())
-        RETURNING id
-      `);
-      return result.rows?.[0]?.id;
-    } catch (err) {
-      console.error("[Storage] Error creating group:", err);
-      return undefined;
-    }
-  }
-
   // ===== RANKING HISTORY =====
 
   async saveLastMonthRankings(
@@ -816,12 +793,18 @@ export class DatabaseStorage implements IStorage {
     groupId?: string
   ): Promise<{ monthKey: string; groupId: string | null; userId: string; rank: number; points: number }[]> {
     try {
-      let query = `SELECT month_key as "monthKey", group_id as "groupId", user_id as "userId", rank, points FROM last_month_rankings WHERE month_key = ${monthKey}`;
+      let whereClause = `month_key = '${monthKey}'`;
       if (groupId) {
-        query += ` AND group_id = ${groupId}`;
+        whereClause += ` AND group_id = '${groupId}'`;
       }
-      const q = await db.execute(sql`${sql.raw(query)}`);
-      return (q.rows as any[]) || [];
+      const q = await db.execute(sql`SELECT month_key as month_key, group_id as group_id, user_id as user_id, rank, points FROM last_month_rankings WHERE ${sql.raw(whereClause)}`);
+      return (q.rows || []).map((r: any) => ({
+        monthKey: r.month_key,
+        groupId: r.group_id,
+        userId: r.user_id,
+        rank: r.rank,
+        points: r.points,
+      }));
     } catch (err) {
       console.error("[Storage] Error fetching ranking history:", err);
       return [];
